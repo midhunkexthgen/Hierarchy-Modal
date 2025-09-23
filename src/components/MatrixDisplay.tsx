@@ -9,7 +9,14 @@ import {
   Trash2,
   Move,
 } from "lucide-react";
-import { useEffect, useRef, useState, type JSX } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type JSX,
+} from "react";
 import type {
   MatrixDisplayProps,
   DashboardWidget,
@@ -23,6 +30,9 @@ import type {
   FilterConfig,
 } from "../DashbiardExampleProps";
 import FilterPanel from "./FilterPanel";
+import { useDispatch, useSelector } from "react-redux";
+import { setLocalAppliedFilters } from "../redux/filtersSlice";
+import { RootState } from "../redux/store";
 
 // amCharts 5 imports
 import * as am5 from "@amcharts/amcharts5";
@@ -188,84 +198,6 @@ const SAMPLE_DATA: MatrixData = {
   ],
 };
 
-const applyFiltersToData = (
-  data: MatrixData,
-  displayType: "summary" | "details",
-  appliedFilters: AppliedFilter[],
-  filters: FilterConfig[]
-): MatrixData => {
-  if (appliedFilters.length === 0) return data;
-
-  const filterData = (items: any[]) => {
-    return items.filter((item) => {
-      return appliedFilters.every((appliedFilter) => {
-        const filter = filters.find((f) => f.id === appliedFilter.filterId);
-        if (!filter || !appliedFilter.value) return true;
-
-        const fieldValue = item[filter.field];
-        const filterValue = appliedFilter.value;
-
-        switch (filter.type) {
-          case "date-range":
-            if (!fieldValue || !filterValue.start || !filterValue.end)
-              return true;
-            const itemDate = new Date(fieldValue);
-            const startDate = new Date(filterValue.start);
-            const endDate = new Date(filterValue.end);
-            return itemDate >= startDate && itemDate <= endDate;
-
-          case "single-date":
-            if (!fieldValue || !filterValue) return true;
-            return (
-              new Date(fieldValue).toDateString() ===
-              new Date(filterValue).toDateString()
-            );
-
-          case "select":
-            if (!filterValue) return true;
-            return fieldValue === filterValue;
-
-          case "multi-select":
-            if (!Array.isArray(filterValue) || filterValue.length === 0)
-              return true;
-            return filterValue.includes(fieldValue);
-
-          case "text":
-            if (!filterValue) return true;
-            return String(fieldValue)
-              .toLowerCase()
-              .includes(String(filterValue).toLowerCase());
-
-          case "number-range":
-            if (!filterValue.min && !filterValue.max) return true;
-            const numValue = Number(fieldValue);
-            const min = filterValue.min || -Infinity;
-            const max = filterValue.max || Infinity;
-            return numValue >= min && numValue <= max;
-
-          default:
-            return true;
-        }
-      });
-    });
-  };
-  if (displayType === "summary") {
-    return {
-      ...data,
-      summary: {
-        ...data.summary,
-        regions: filterData(data.summary.regions),
-        categories: filterData(data.summary.categories),
-      },
-    };
-  } else {
-    return {
-      ...data,
-      details: filterData(data.details),
-    };
-  }
-};
-
 const MatrixDisplay: React.FC<
   MatrixDisplayProps & {
     widget: DashboardWidget;
@@ -285,44 +217,133 @@ const MatrixDisplay: React.FC<
   viewType = "tabular",
   additionalInfo = { outcome: true },
   onItemClick = () => {},
-  title = "Data Matrix",
   refreshInterval = null,
   customStyles = {},
   filters = [],
-  appliedFilters = [],
   onFiltersChange = () => {},
 }) => {
   const [data, setData] = useState<MatrixData>(SAMPLE_DATA);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState<boolean>(false);
-  const [localAppliedFilters, setLocalAppliedFilters] =
-    useState<AppliedFilter[]>(appliedFilters);
-
+  const dispatch = useDispatch();
+  const localAppliedFilters = useSelector(
+    (state: RootState) => state.filters.localAppliedFilters
+  );
+  // const localAppliedFiltersOne = useSelector(
+  //   (state: RootState) => state.filters
+  // );
   // Refs for amCharts
+
+  console.log("localAppliedFiltersWhyyytt", localAppliedFilters);
+
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<am5.Root | null>(null);
 
+  const applyFiltersToData = useCallback(
+    (
+      data: MatrixData,
+      displayType: "summary" | "details",
+      appliedFilters: AppliedFilter[],
+      filters: FilterConfig[]
+    ): MatrixData => {
+      if (appliedFilters.length === 0) return data;
+
+      const filterData = (items: (SummaryItem | DetailItem)[]) => {
+        return items.filter((item) => {
+          return appliedFilters.every((appliedFilter) => {
+            const filter = filters.find((f) => f.id === appliedFilter.filterId);
+            if (!filter || !appliedFilter.value) return true;
+
+            const fieldValue = item[filter.field as keyof typeof item];
+            const filterValue = appliedFilter.value;
+
+            switch (filter.type) {
+              case "date-range": {
+                if (!fieldValue || !filterValue.start || !filterValue.end)
+                  return true;
+                const itemDate = new Date(fieldValue as string);
+                const startDate = new Date(filterValue.start);
+                const endDate = new Date(filterValue.end);
+                return itemDate >= startDate && itemDate <= endDate;
+              }
+
+              case "single-date": {
+                if (!fieldValue || !filterValue) return true;
+                return (
+                  new Date(fieldValue as string).toDateString() ===
+                  new Date(filterValue as string).toDateString()
+                );
+              }
+
+              case "select":
+                if (!filterValue) return true;
+                return fieldValue === filterValue;
+
+              case "multi-select":
+                if (!Array.isArray(filterValue) || filterValue.length === 0)
+                  return true;
+                return (filterValue as (string | number)[]).includes(
+                  fieldValue as string | number
+                );
+
+              case "text":
+                if (!filterValue) return true;
+                return String(fieldValue)
+                  .toLowerCase()
+                  .includes(String(filterValue).toLowerCase());
+
+              case "number-range": {
+                if (!filterValue.min && !filterValue.max) return true;
+                const numValue = Number(fieldValue);
+                const min = filterValue.min || -Infinity;
+                const max = filterValue.max || Infinity;
+                return numValue >= min && numValue <= max;
+              }
+
+              default:
+                return true;
+            }
+          });
+        });
+      };
+      if (displayType === "summary") {
+        return {
+          ...data,
+          summary: {
+            ...data.summary,
+            regions: filterData(data.summary.regions) as SummaryItem[],
+            categories: filterData(data.summary.categories) as SummaryItem[],
+          },
+        };
+      } else {
+        return {
+          ...data,
+          details: filterData(data.details) as DetailItem[],
+        };
+      }
+    },
+    []
+  );
+
   // Initialize default filters
-  useEffect(() => {
-    const defaultFilters = filters
-      .filter((f) => f.defaultValue !== undefined)
-      .map((f) => ({ filterId: f.id, value: f.defaultValue }));
-    if (defaultFilters.length > 0 && localAppliedFilters.length === 0) {
-      setLocalAppliedFilters(defaultFilters);
-    }
-  }, [filters]);
+  // useEffect(() => {
+  //   const defaultFilters = filters
+  //     .filter((f) => f.defaultValue !== undefined)
+  //     .map((f) => ({ filterId: f.id, value: f.defaultValue }));
+  //   if (defaultFilters.length > 0 && localAppliedFilters.length === 0) {
+  //     dispatch(setLocalAppliedFilters(defaultFilters));
+  //   }
+  // }, [dispatch, filters, localAppliedFilters.length]);
 
   // Apply filters to data
-  const filteredData = applyFiltersToData(
-    data,
-    displayType,
-    localAppliedFilters,
-    filters
+  const filteredData = useMemo(
+    () => applyFiltersToData(data, displayType, localAppliedFilters, filters),
+    [applyFiltersToData, data, displayType, localAppliedFilters, filters]
   );
 
   // Fetch data from API
-  const fetchData = async (): Promise<void> => {
+  const fetchData = useCallback(async (): Promise<void> => {
     if (!apiEndpoint) return;
 
     setLoading(true);
@@ -343,11 +364,11 @@ const MatrixDisplay: React.FC<
             if (filter.value.max !== undefined)
               params.append(`${filterConfig.field}_max`, filter.value.max);
           } else if (filterConfig.type === "multi-select") {
-            filter.value.forEach((val: any) =>
-              params.append(filterConfig.field, val)
+            (filter.value as (string | number)[]).forEach((val) =>
+              params.append(filterConfig.field, String(val))
             );
           } else {
-            params.append(filterConfig.field, filter.value);
+            params.append(filterConfig.field, String(filter.value));
           }
         }
       });
@@ -365,7 +386,7 @@ const MatrixDisplay: React.FC<
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiEndpoint, localAppliedFilters, filters]);
 
   useEffect(() => {
     fetchData();
@@ -374,7 +395,7 @@ const MatrixDisplay: React.FC<
       const interval = setInterval(fetchData, refreshInterval);
       return () => clearInterval(interval);
     }
-  }, [apiEndpoint, refreshInterval, localAppliedFilters]);
+  }, [fetchData, refreshInterval]);
 
   // Cleanup amCharts on unmount
   useEffect(() => {
@@ -385,35 +406,48 @@ const MatrixDisplay: React.FC<
     };
   }, []);
 
+  // Handle item click
+  const handleItemClick = useCallback(
+    (item: BaseItem | SummaryItem | DetailItem, type: string): void => {
+      onItemClick({ item, type, displayType, viewType });
+    },
+    [onItemClick, displayType, viewType]
+  );
+
   // Initialize amCharts
-  const initializeChart = (
-    chartData: any[],
-    chartType: "pie" | "column" | "layered"
+  const initializeChart = useCallback(
+    (
+      chartData: (SummaryItem | DetailItem)[],
+      chartType: "pie" | "column" | "layered"
+    ): void => {
+      if (!chartRef.current) return;
+
+      // Dispose existing chart
+      if (chartInstance.current) {
+        chartInstance.current.dispose();
+      }
+
+      // Create root element
+      const root = am5.Root.new(chartRef.current);
+      chartInstance.current = root;
+
+      // Set themes
+      root.setThemes([am5themes_Animated.new(root)]);
+      if (chartType === "pie") {
+        createPieChart(root, chartData);
+      } else if (chartType === "column") {
+        createColumnChart(root, chartData);
+      } else if (chartType === "layered") {
+        createLayeredColumnChart(root, chartData);
+      }
+    },
+    [displayType, localAppliedFilters, handleItemClick]
+  );
+
+  const createPieChart = (
+    root: am5.Root,
+    chartData: (SummaryItem | DetailItem)[]
   ): void => {
-    if (!chartRef.current) return;
-
-    // Dispose existing chart
-    if (chartInstance.current) {
-      chartInstance.current.dispose();
-    }
-
-    // Create root element
-    const root = am5.Root.new(chartRef.current);
-    chartInstance.current = root;
-
-    // Set themes
-    root.setThemes([am5themes_Animated.new(root)]);
-
-    if (chartType === "pie") {
-      createPieChart(root, chartData);
-    } else if (chartType === "column") {
-      createColumnChart(root, chartData);
-    } else if (chartType === "layered") {
-      createLayeredColumnChart(root, chartData);
-    }
-  };
-
-  const createPieChart = (root: am5.Root, chartData: any[]): void => {
     const chart = root.container.children.push(
       am5percent.PieChart.new(root, {
         layout: root.verticalLayout,
@@ -442,8 +476,16 @@ const MatrixDisplay: React.FC<
         handleItemClick(dataContext, "pie-segment");
       }
     });
-
-    series.data.setAll(chartData);
+    const filteredChartData =
+      localAppliedFilters?.find((el) => el.filterId === "region-filter")
+        ?.value || [];
+    series.data.setAll(
+      Array.isArray(filteredChartData) && filteredChartData.length > 0
+        ? chartData.filter((ele) =>
+            filteredChartData.includes(ele.name as string)
+          )
+        : chartData
+    );
 
     const legend = chart.children.push(
       am5.Legend.new(root, {
@@ -457,7 +499,10 @@ const MatrixDisplay: React.FC<
     legend.data.setAll(series.dataItems);
   };
 
-  const createColumnChart = (root: am5.Root, chartData: any[]): void => {
+  const createColumnChart = (
+    root: am5.Root,
+    chartData: (SummaryItem | DetailItem)[]
+  ): void => {
     const chart = root.container.children.push(
       am5xy.XYChart.new(root, {
         panX: true,
@@ -522,7 +567,10 @@ const MatrixDisplay: React.FC<
     chart.appear(1000, 100);
   };
 
-  const createLayeredColumnChart = (root: am5.Root, chartData: any[]): void => {
+  const createLayeredColumnChart = (
+    root: am5.Root,
+    chartData: (SummaryItem | DetailItem)[]
+  ): void => {
     const chart = root.container.children.push(
       am5xy.XYChart.new(root, {
         panX: true,
@@ -583,10 +631,29 @@ const MatrixDisplay: React.FC<
     );
 
     // Scale orders data for better visualization
-    const scaledData = chartData.map((item) => ({
-      ...item,
-      ordersScaled: item.orders * 100, // Scale orders for visibility
-    }));
+    // const filteredChartData =
+    //   localAppliedFilters?.find((el) => el.filterId === "region-filter")
+    //     ?.value || [];
+    const createRegionFilter = (localAppliedFilters: any[]) => {
+      return (item: any) => {
+        if (
+          localAppliedFilters?.find((el) => el.filterId === "region-filter")
+        ) {
+          return localAppliedFilters?.some(
+            (region) =>
+              region.filterId === "region-filter" &&
+              region.value?.includes(item?.name)
+          );
+        }
+        return true;
+      };
+    };
+    const scaledData = chartData
+      .filter(createRegionFilter(localAppliedFilters))
+      .map((item) => ({
+        ...item,
+        ordersScaled: (item.orders || 0) * 100, // Scale orders for visibility
+      }));
 
     revenueSeries.columns.template.setAll({
       cornerRadiusTL: 5,
@@ -648,11 +715,11 @@ const MatrixDisplay: React.FC<
         initializeChart(chartData, "layered");
       }
     }
-  }, [filteredData, viewType, displayType]);
+  }, [filteredData, viewType, displayType, initializeChart]);
 
   // Handle filter changes
   const handleFiltersChange = (newFilters: AppliedFilter[]) => {
-    setLocalAppliedFilters(newFilters);
+    dispatch(setLocalAppliedFilters(newFilters));
     onFiltersChange(newFilters);
   };
 
@@ -672,14 +739,6 @@ const MatrixDisplay: React.FC<
   const getOutcomeColor = (outcome?: "positive" | "negative"): string => {
     if (!additionalInfo.outcome || !outcome) return "text-gray-700";
     return outcome === "positive" ? "text-green-600" : "text-red-600";
-  };
-
-  // Handle item click
-  const handleItemClick = (
-    item: BaseItem | SummaryItem | DetailItem,
-    type: string
-  ): void => {
-    onItemClick({ item, type, displayType, viewType });
   };
 
   // Render loading state
@@ -797,12 +856,15 @@ const MatrixDisplay: React.FC<
             >
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-medium text-gray-900">
-                  {item.name || item.region}
+                  {(item as SummaryItem).name || (item as DetailItem).region}
                 </h4>
                 {getOutcomeIcon(item.outcome)}
               </div>
               <div className="text-2xl font-bold text-blue-600 mb-1">
-                ${(item.value || item.revenue)?.toLocaleString()}
+                $
+                {(
+                  (item as SummaryItem).value || (item as DetailItem).revenue
+                )?.toLocaleString()}
               </div>
               {item.orders && (
                 <div className="text-sm text-gray-500">
@@ -819,10 +881,11 @@ const MatrixDisplay: React.FC<
   // Tabular View
   const renderTabular = (): JSX.Element => {
     console.log("displayType", displayType);
-    const tableData =
+    const tableData: SummaryItem[] | DetailItem[] = (
       displayType === "summary"
         ? filteredData.summary.regions
-        : filteredData.details;
+        : filteredData.details
+    ) as SummaryItem[] | DetailItem[];
     const columns: TableColumn[] =
       displayType === "summary"
         ? [
@@ -880,13 +943,17 @@ const MatrixDisplay: React.FC<
                     >
                       {column.key === "revenue" || column.key === "value"
                         ? `${
-                            (row as any)[column.key]?.toLocaleString() || "N/A"
+                            (row as SummaryItem | DetailItem)[
+                              column.key as keyof typeof row
+                            ]?.toLocaleString() || "N/A"
                           }`
                         : column.key === "growth"
-                        ? `${(row as any)[column.key] > 0 ? "+" : ""}${
-                            (row as any)[column.key]
+                        ? `${(row as DetailItem)[column.key] > 0 ? "+" : ""}${
+                            (row as DetailItem)[column.key]
                           }%`
-                        : (row as any)[column.key] || "N/A"}
+                        : (row as SummaryItem | DetailItem)[
+                            column.key as keyof typeof row
+                          ] || "N/A"}
                     </td>
                   ))}
                   {additionalInfo.outcome && (

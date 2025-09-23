@@ -1,5 +1,5 @@
 import React, { useState, type JSX } from "react";
-import { Plus, Grid, Settings, Filter } from "lucide-react";
+import { Plus, Grid, Settings } from "lucide-react";
 import type {
   DashboardLayout,
   AppliedFilter,
@@ -9,6 +9,12 @@ import type {
 import DashboardManager from "./components/DashboardManager";
 import MatrixDisplay from "./components/MatrixDisplay";
 import WidgetEditor from "./components/WidgetEditor";
+import { Responsive, WidthProvider } from "react-grid-layout";
+
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const DEFAULT_DASHBOARD: DashboardLayout = {
   id: "default-dashboard",
@@ -129,18 +135,17 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
       additionalInfo: { outcome: true },
       filters: [
         {
-          id: "details-date-range",
+          id: "revenue-date-range",
           type: "date-range",
           label: "Date Range",
           field: "date",
         },
         {
-          id: "details-region",
-          type: "select",
+          id: "region-filter",
+          type: "multi-select",
           label: "Region",
           field: "region",
           options: [
-            { label: "All Regions", value: "" },
             { label: "UK", value: "UK" },
             { label: "Germany", value: "Germany" },
             { label: "France", value: "France" },
@@ -163,7 +168,9 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
 };
 
 const JsonDrivenDashboard: React.FC = () => {
-  const [dashboards] = useState<DashboardLayout[]>([DEFAULT_DASHBOARD]);
+  const [dashboards, setDashboards] = useState<DashboardLayout[]>([
+    DEFAULT_DASHBOARD,
+  ]);
   const [currentDashboard, setCurrentDashboard] =
     useState<DashboardLayout>(DEFAULT_DASHBOARD);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -171,20 +178,17 @@ const JsonDrivenDashboard: React.FC = () => {
     null
   );
   const [isWidgetEditorOpen, setIsWidgetEditorOpen] = useState(false);
-  const [draggedWidget, setDraggedWidget] = useState<string | null>(null);
   const [widgetFilters, setWidgetFilters] = useState<
     Record<string, AppliedFilter[]>
   >({});
 
-  // Handle item click
   const handleItemClick = (data: ClickData): void => {
     console.log("Item clicked:", data);
     if (!isEditMode) {
-      alert(`Clicked on: ${JSON.stringify(data.item, null, 2)}`);
+      // Handle item click logic
     }
   };
 
-  // Handle widget editing
   const handleEditWidget = (widgetId: string): void => {
     const widget = currentDashboard.widgets.find((w) => w.id === widgetId);
     if (widget) {
@@ -193,7 +197,6 @@ const JsonDrivenDashboard: React.FC = () => {
     }
   };
 
-  // Handle widget deletion
   const handleDeleteWidget = (widgetId: string): void => {
     if (confirm("Are you sure you want to delete this widget?")) {
       const updatedDashboard = {
@@ -201,15 +204,12 @@ const JsonDrivenDashboard: React.FC = () => {
         widgets: currentDashboard.widgets.filter((w) => w.id !== widgetId),
       };
       setCurrentDashboard(updatedDashboard);
-
-      // Remove widget filters
       const newWidgetFilters = { ...widgetFilters };
       delete newWidgetFilters[widgetId];
       setWidgetFilters(newWidgetFilters);
     }
   };
 
-  // Handle widget save
   const handleSaveWidget = (updatedWidget: DashboardWidget): void => {
     const updatedDashboard = {
       ...currentDashboard,
@@ -220,18 +220,13 @@ const JsonDrivenDashboard: React.FC = () => {
     setCurrentDashboard(updatedDashboard);
   };
 
-  // Handle widget filter changes
   const handleWidgetFiltersChange = (
     widgetId: string,
     filters: AppliedFilter[]
   ): void => {
-    setWidgetFilters((prev) => ({
-      ...prev,
-      [widgetId]: filters,
-    }));
+    setWidgetFilters((prev) => ({ ...prev, [widgetId]: filters }));
   };
 
-  // Add new widget
   const addNewWidget = (): void => {
     const newWidget: DashboardWidget = {
       id: `widget-${Date.now()}`,
@@ -243,41 +238,6 @@ const JsonDrivenDashboard: React.FC = () => {
       filters: [],
     };
 
-    // Find available position
-    const occupiedPositions = currentDashboard.widgets.map((w) => w.position);
-    let row = 0;
-    let col = 0;
-    let positionFound = false;
-
-    while (!positionFound && row < currentDashboard.grid.rows) {
-      while (
-        col <
-        currentDashboard.grid.columns - newWidget.position.width + 1
-      ) {
-        const isOccupied = occupiedPositions.some(
-          (pos) =>
-            !(
-              col + newWidget.position.width <= pos.col ||
-              col >= pos.col + pos.width ||
-              row + newWidget.position.height <= pos.row ||
-              row >= pos.row + pos.height
-            )
-        );
-
-        if (!isOccupied) {
-          newWidget.position.row = row;
-          newWidget.position.col = col;
-          positionFound = true;
-          break;
-        }
-        col++;
-      }
-      if (!positionFound) {
-        row++;
-        col = 0;
-      }
-    }
-
     const updatedDashboard = {
       ...currentDashboard,
       widgets: [...currentDashboard.widgets, newWidget],
@@ -285,168 +245,50 @@ const JsonDrivenDashboard: React.FC = () => {
     setCurrentDashboard(updatedDashboard);
   };
 
-  // Handle dashboard configuration load
   const handleLoadDashboard = (configText: string): void => {
     try {
       const config: DashboardLayout = JSON.parse(configText);
       setCurrentDashboard(config);
-      setWidgetFilters({}); // Reset widget filters when loading new dashboard
-    } catch (error) {
+      setWidgetFilters({});
+    } catch {
       alert("Invalid dashboard configuration");
     }
   };
 
-  // Handle drag and drop
-  const handleDragStart = (widgetId: string): void => {
-    setDraggedWidget(widgetId);
-  };
-
-  const handleDragEnd = (): void => {
-    setDraggedWidget(null);
-  };
-
-  const handleDrop = (row: number, col: number): void => {
-    if (!draggedWidget) return;
-
-    const widget = currentDashboard.widgets.find((w) => w.id === draggedWidget);
-    if (!widget) return;
-
-    // Check if position is valid
-    if (
-      col + widget.position.width > currentDashboard.grid.columns ||
-      row + widget.position.height > currentDashboard.grid.rows
-    ) {
-      return;
-    }
-
-    // Check for overlaps with other widgets
-    const otherWidgets = currentDashboard.widgets.filter(
-      (w) => w.id !== draggedWidget
-    );
-    const wouldOverlap = otherWidgets.some(
-      (w) =>
-        !(
-          col + widget.position.width <= w.position.col ||
-          col >= w.position.col + w.position.width ||
-          row + widget.position.height <= w.position.row ||
-          row >= w.position.row + w.position.height
-        )
-    );
-
-    if (wouldOverlap) return;
-
-    // Update widget position
-    const updatedDashboard = {
-      ...currentDashboard,
-      widgets: currentDashboard.widgets.map((w) =>
-        w.id === draggedWidget
-          ? { ...w, position: { ...w.position, row, col } }
-          : w
-      ),
-    };
-    setCurrentDashboard(updatedDashboard);
-  };
-
-  // Create grid layout
-  const createGridLayout = (): JSX.Element => {
-    const { grid, widgets } = currentDashboard;
-    const gridCells: JSX.Element[] = [];
-
-    // Create grid cells
-    for (let row = 0; row < grid.rows; row++) {
-      for (let col = 0; col < grid.columns; col++) {
-        const isOccupied = widgets.some(
-          (widget) =>
-            col >= widget.position.col &&
-            col < widget.position.col + widget.position.width &&
-            row >= widget.position.row &&
-            row < widget.position.row + widget.position.height
-        );
-
-        if (!isOccupied) {
-          gridCells.push(
-            <div
-              key={`${row}-${col}`}
-              className={`border border-gray-200 ${
-                isEditMode ? "hover:bg-blue-50 cursor-pointer" : ""
-              }`}
-              style={{
-                gridColumn: col + 1,
-                gridRow: row + 1,
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (isEditMode) handleDrop(row, col);
-              }}
-              onDragOver={(e) => e.preventDefault()}
-              onClick={() => {
-                if (isEditMode && !draggedWidget) {
-                  // Could add widget placement logic here
-                }
-              }}
-            />
-          );
-        }
+  const onLayoutChange = (layout: ReactGridLayout.Layout[]): void => {
+    const updatedWidgets = currentDashboard.widgets.map((widget) => {
+      const layoutItem = layout.find((item) => item.i === widget.id);
+      if (layoutItem) {
+        return {
+          ...widget,
+          position: {
+            ...widget.position,
+            col: layoutItem.x,
+            row: layoutItem.y,
+            width: layoutItem.w,
+            height: layoutItem.h,
+          },
+        };
       }
-    }
+      return widget;
+    });
 
-    return (
-      <div
-        className="relative"
-        style={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${grid.columns}, 1fr)`,
-          gridTemplateRows: `repeat(${grid.rows}, 1fr)`,
-          gap: `${grid.gap}px`,
-          height: "800px",
-        }}
-      >
-        {gridCells}
-        {widgets.map((widget) => (
-          <div
-            key={widget.id}
-            draggable={isEditMode}
-            onDragStart={() => handleDragStart(widget.id)}
-            onDragEnd={handleDragEnd}
-            style={{
-              gridColumn: `${widget.position.col + 1} / span ${
-                widget.position.width
-              }`,
-              gridRow: `${widget.position.row + 1} / span ${
-                widget.position.height
-              }`,
-            }}
-            className={`${isEditMode ? "cursor-move" : ""}`}
-          >
-            <MatrixDisplay
-              widget={widget}
-              displayType={widget.displayType}
-              viewType={widget.viewType}
-              title={widget.title}
-              apiEndpoint={widget.apiEndpoint}
-              refreshInterval={widget.refreshInterval}
-              additionalInfo={widget.additionalInfo}
-              customStyles={widget.customStyles}
-              onItemClick={handleItemClick}
-              isDragging={draggedWidget === widget.id}
-              onEdit={handleEditWidget}
-              onDelete={handleDeleteWidget}
-              isEditMode={isEditMode}
-              filters={widget.filters || []}
-              appliedFilters={widgetFilters[widget.id] || []}
-              onFiltersChange={(filters) =>
-                handleWidgetFiltersChange(widget.id, filters)
-              }
-            />
-          </div>
-        ))}
-      </div>
-    );
+    setCurrentDashboard({
+      ...currentDashboard,
+      widgets: updatedWidgets,
+    });
   };
+
+  const layout = currentDashboard.widgets.map((w) => ({
+    i: w.id,
+    x: w.position.col,
+    y: w.position.row,
+    w: w.position.width,
+    h: w.position.height,
+  }));
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
@@ -456,7 +298,6 @@ const JsonDrivenDashboard: React.FC = () => {
             </h1>
             <p className="text-gray-600 mt-1">{currentDashboard.description}</p>
           </div>
-
           <div className="flex items-center gap-4">
             <DashboardManager
               dashboards={dashboards}
@@ -465,7 +306,6 @@ const JsonDrivenDashboard: React.FC = () => {
               onSaveDashboard={setCurrentDashboard}
               onLoadDashboard={handleLoadDashboard}
             />
-
             <div className="flex gap-2">
               <button
                 onClick={addNewWidget}
@@ -475,7 +315,6 @@ const JsonDrivenDashboard: React.FC = () => {
                 <Plus className="w-4 h-4" />
                 Add Widget
               </button>
-
               <button
                 onClick={() => setIsEditMode(!isEditMode)}
                 className={`px-4 py-2 rounded-md transition-colors flex items-center gap-1 ${
@@ -492,10 +331,44 @@ const JsonDrivenDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Dashboard Content */}
-      <div className="p-6">{createGridLayout()}</div>
+      <div className="p-6">
+        <ResponsiveGridLayout
+          className="layout"
+          layouts={{ lg: layout }}
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+          rowHeight={100}
+          onLayoutChange={onLayoutChange}
+          isDraggable={isEditMode}
+          isResizable={isEditMode}
+        >
+          {currentDashboard.widgets.map((widget) => (
+            <div key={widget.id} className="bg-white rounded-lg shadow-md">
+              <MatrixDisplay
+                widget={widget}
+                displayType={widget.displayType}
+                viewType={widget.viewType}
+                title={widget.title}
+                apiEndpoint={widget.apiEndpoint}
+                refreshInterval={widget.refreshInterval}
+                additionalInfo={widget.additionalInfo}
+                customStyles={widget.customStyles}
+                onItemClick={handleItemClick}
+                isDragging={false} // isDragging is no longer needed
+                onEdit={handleEditWidget}
+                onDelete={handleDeleteWidget}
+                isEditMode={isEditMode}
+                filters={widget.filters || []}
+                appliedFilters={widgetFilters[widget.id] || []}
+                onFiltersChange={(filters) =>
+                  handleWidgetFiltersChange(widget.id, filters)
+                }
+              />
+            </div>
+          ))}
+        </ResponsiveGridLayout>
+      </div>
 
-      {/* Widget Editor Modal */}
       <WidgetEditor
         widget={editingWidget}
         isOpen={isWidgetEditorOpen}
@@ -506,33 +379,14 @@ const JsonDrivenDashboard: React.FC = () => {
         onSave={handleSaveWidget}
       />
 
-      {/* Instructions */}
       {isEditMode && (
         <div className="fixed bottom-4 right-4 bg-blue-600 text-white p-4 rounded-lg shadow-lg max-w-sm">
           <h4 className="font-semibold mb-2">Edit Mode Active</h4>
           <ul className="text-sm space-y-1">
-            <li>• Drag widgets to move them</li>
-            <li>• Click edit icon to modify widget</li>
-            <li>• Click filter icon to configure filters</li>
-            <li>• Click trash icon to delete widget</li>
-            <li>• Click "Add Widget" to create new widgets</li>
-            <li>• Export/Import JSON configurations with filters</li>
-          </ul>
-        </div>
-      )}
-
-      {/* Filter Information */}
-      {!isEditMode && (
-        <div className="fixed bottom-4 left-4 bg-gray-800 text-white p-3 rounded-lg shadow-lg max-w-xs">
-          <h4 className="font-semibold mb-2 flex items-center">
-            <Filter className="w-4 h-4 mr-1" />
-            Filter Guide
-          </h4>
-          <ul className="text-xs space-y-1">
-            <li>• Click filter icon on widgets to apply filters</li>
-            <li>• Date ranges, text search, and multi-select available</li>
-            <li>• Filter badges show active filter count</li>
-            <li>• Filters persist until manually cleared</li>
+            <li>• Drag and resize widgets as needed.</li>
+            <li>• Click the edit icon to modify a widget's properties.</li>
+            <li>• Use the filter icon to configure widget-specific filters.</li>
+            <li>• Remove widgets by clicking the trash icon.</li>
           </ul>
         </div>
       )}

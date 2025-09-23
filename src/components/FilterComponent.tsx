@@ -1,11 +1,11 @@
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
-import type { FilterConfig } from "../DashbiardExampleProps";
+import type { AppliedFilter, FilterConfig } from "../DashbiardExampleProps";
 
 const FilterComponent: React.FC<{
   filter: FilterConfig;
-  value: any;
-  onChange: (value: any) => void;
+  value: AppliedFilter["value"];
+  onChange: (value: AppliedFilter["value"]) => void;
 }> = ({ filter, value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -34,7 +34,7 @@ const FilterComponent: React.FC<{
         return (
           <input
             type="date"
-            value={value || ""}
+            value={(value as string) || ""}
             onChange={(e) => onChange(e.target.value)}
             className="px-2 py-1 border border-gray-300 rounded text-xs w-full"
           />
@@ -43,7 +43,7 @@ const FilterComponent: React.FC<{
       case "select":
         return (
           <select
-            value={value || ""}
+            value={(value as string) || ""}
             onChange={(e) => onChange(e.target.value)}
             className="px-2 py-1 border border-gray-300 rounded text-xs w-full"
           >
@@ -55,7 +55,7 @@ const FilterComponent: React.FC<{
           </select>
         );
 
-      case "multi-select":
+      case "multi-select": {
         const selectedValues = Array.isArray(value) ? value : [];
         return (
           <div className="relative">
@@ -95,12 +95,13 @@ const FilterComponent: React.FC<{
             )}
           </div>
         );
+      }
 
       case "text":
         return (
           <input
             type="text"
-            value={value || ""}
+            value={(value as string) || ""}
             onChange={(e) => onChange(e.target.value)}
             placeholder={filter.placeholder}
             className="px-2 py-1 border border-gray-300 rounded text-xs w-full"

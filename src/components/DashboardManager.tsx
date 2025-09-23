@@ -6,13 +6,11 @@ const DashboardManager: React.FC<{
   dashboards: DashboardLayout[];
   currentDashboard: DashboardLayout;
   onDashboardChange: (dashboard: DashboardLayout) => void;
-  onSaveDashboard: (dashboard: DashboardLayout) => void;
   onLoadDashboard: (config: string) => void;
 }> = ({
   dashboards,
   currentDashboard,
   onDashboardChange,
-  onSaveDashboard,
   onLoadDashboard,
 }) => {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
@@ -26,11 +24,11 @@ const DashboardManager: React.FC<{
 
   const importConfig = () => {
     try {
-      const config = JSON.parse(configText);
+      JSON.parse(configText);
       onLoadDashboard(configText);
       setIsConfigModalOpen(false);
       setConfigText("");
-    } catch (error) {
+    } catch {
       alert("Invalid JSON configuration");
     }
   };

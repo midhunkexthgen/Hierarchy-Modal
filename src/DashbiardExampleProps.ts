@@ -7,7 +7,7 @@ interface BaseItem {
   orders?: number;
   outcome?: "positive" | "negative";
   date?: string;
-  [key: string]: any; // For custom properties
+  [key: string]: string | number | undefined; // For custom properties
 }
 
 interface SummaryItem extends BaseItem {
@@ -61,7 +61,11 @@ interface FilterConfig {
   field: string; // The field this filter applies to
   required?: boolean;
   options?: FilterOption[]; // For select/multi-select
-  defaultValue?: any;
+  defaultValue?:
+    | string
+    | number
+    | { start: string; end: string }
+    | { min: number; max: number };
   placeholder?: string;
   min?: number; // For number-range
   max?: number; // For number-range
@@ -69,7 +73,12 @@ interface FilterConfig {
 
 interface AppliedFilter {
   filterId: string;
-  value: any;
+  value:
+    | string
+    | number
+    | { start: string; end: string }
+    | { min: number; max: number }
+    | (string | number)[];
 }
 
 interface MatrixDisplayProps {
@@ -133,85 +142,6 @@ interface DashboardLayout {
   widgets: DashboardWidget[];
 }
 
-const applyFiltersToData = (
-  data: MatrixData,
-  displayType: "summary" | "details",
-  appliedFilters: AppliedFilter[],
-  filters: FilterConfig[]
-): MatrixData => {
-  if (appliedFilters.length === 0) return data;
-
-  const filterData = (items: any[]) => {
-    return items.filter((item) => {
-      return appliedFilters.every((appliedFilter) => {
-        const filter = filters.find((f) => f.id === appliedFilter.filterId);
-        if (!filter || !appliedFilter.value) return true;
-
-        const fieldValue = item[filter.field];
-        const filterValue = appliedFilter.value;
-
-        switch (filter.type) {
-          case "date-range":
-            if (!fieldValue || !filterValue.start || !filterValue.end)
-              return true;
-            const itemDate = new Date(fieldValue);
-            const startDate = new Date(filterValue.start);
-            const endDate = new Date(filterValue.end);
-            return itemDate >= startDate && itemDate <= endDate;
-
-          case "single-date":
-            if (!fieldValue || !filterValue) return true;
-            return (
-              new Date(fieldValue).toDateString() ===
-              new Date(filterValue).toDateString()
-            );
-
-          case "select":
-            if (!filterValue) return true;
-            return fieldValue === filterValue;
-
-          case "multi-select":
-            if (!Array.isArray(filterValue) || filterValue.length === 0)
-              return true;
-            return filterValue.includes(fieldValue);
-
-          case "text":
-            if (!filterValue) return true;
-            return String(fieldValue)
-              .toLowerCase()
-              .includes(String(filterValue).toLowerCase());
-
-          case "number-range":
-            if (!filterValue.min && !filterValue.max) return true;
-            const numValue = Number(fieldValue);
-            const min = filterValue.min || -Infinity;
-            const max = filterValue.max || Infinity;
-            return numValue >= min && numValue <= max;
-
-          default:
-            return true;
-        }
-      });
-    });
-  };
-
-  if (displayType === "summary") {
-    return {
-      ...data,
-      summary: {
-        ...data.summary,
-        regions: filterData(data.summary.regions),
-        categories: filterData(data.summary.categories),
-      },
-    };
-  } else {
-    return {
-      ...data,
-      details: filterData(data.details),
-    };
-  }
-};
-
 export type {
   BaseItem,
   SummaryItem,
@@ -226,6 +156,4 @@ export type {
   TableColumn,
   DashboardWidget,
   DashboardLayout,
-};  
-
-
+};

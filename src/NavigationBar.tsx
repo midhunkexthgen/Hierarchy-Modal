@@ -54,7 +54,7 @@ interface SelectedItems {
 
 interface ModifierValues {
   [level: number]: {
-    [modifierCode: string]: any;
+    [modifierCode: string]: string | number | { startDate: string; endDate: string };
   };
 }
 
@@ -750,7 +750,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
   };
 
   // Handle modifier value changes
-  const handleModifierChange = (level: number, modifierCode: string, value: any): void => {
+  const handleModifierChange = (level: number, modifierCode: string, value: string | number | { startDate: string; endDate: string }): void => {
     setModifierValues(prev => ({
       ...prev,
       [level]: {
