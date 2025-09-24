@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import { useDispatch } from "react-redux";
+import { setCurrentNavigationPath } from "./redux/layoutSlice";
+import { generateNavigationPathKey } from "./utils/navigationUtils";
 import {
   ChevronRight,
   Package,
@@ -124,6 +127,7 @@ const GenericFilter: React.FC<{
 };
 
 const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
+  const dispatch = useDispatch();
   const defaultData: DimensionItem[] = [
     {
       code: "APPLE",
@@ -659,6 +663,12 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
   const [selectedItems, setSelectedItems] = useState<SelectedItems>({});
   const [modifierValues, setModifierValues] = useState<ModifierValues>({});
 
+  // Update navigation path in Redux when it changes
+  React.useEffect(() => {
+    const pathKey = generateNavigationPathKey(navigationPath);
+    dispatch(setCurrentNavigationPath(pathKey));
+  }, [navigationPath, dispatch]);
+
   // Function to get appropriate icon based on icon name or level
   const getIcon = (level: number, iconName?: string): React.ReactNode => {
     // If iconName is provided, use specific icons
@@ -747,6 +757,10 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
       delete newModifierValues[i];
     }
     setModifierValues(newModifierValues);
+
+    // Update navigation path in Redux
+    const pathKey = generateNavigationPathKey(newPath);
+    dispatch(setCurrentNavigationPath(pathKey));
   };
 
   // Handle modifier value changes

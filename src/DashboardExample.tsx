@@ -1,4 +1,5 @@
 import React, { useState, type JSX } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { Plus, Grid, Settings } from "lucide-react";
 import type {
   DashboardLayout,
@@ -6,6 +7,9 @@ import type {
   DashboardWidget,
   ClickData,
 } from "./DashbiardExampleProps";
+import type { RootState } from "./redux/store";
+import { setLayoutForPath, setLayoutLoading } from "./redux/layoutSlice";
+import { layoutStorage } from "./utils/layoutStorage";
 import DashboardManager from "./components/DashboardManager";
 import MatrixDisplay from "./components/MatrixDisplay";
 import WidgetEditor from "./components/WidgetEditor";
@@ -168,6 +172,11 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
 };
 
 const JsonDrivenDashboard: React.FC = () => {
+  const dispatch = useDispatch();
+  const { currentNavigationPath, layouts, isLayoutLoading } = useSelector(
+    (state: RootState) => state.layout
+  );
+  
   const [dashboards, setDashboards] = useState<DashboardLayout[]>([
     DEFAULT_DASHBOARD,
   ]);
@@ -181,6 +190,53 @@ const JsonDrivenDashboard: React.FC = () => {
   const [widgetFilters, setWidgetFilters] = useState<
     Record<string, AppliedFilter[]>
   >({});
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize IndexedDB and load layout for current navigation path
+  React.useEffect(() => {
+    const initializeLayout = async () => {
+      try {
+        dispatch(setLayoutLoading(true));
+        await layoutStorage.init();
+        
+        // Load layout for current navigation path
+        const savedLayout = await layoutStorage.getLayout(currentNavigationPath);
+        if (savedLayout) {
+          dispatch(setLayoutForPath({ path: currentNavigationPath, layout: savedLayout }));
+        }
+        
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('Failed to initialize layout storage:', error);
+        setIsInitialized(true);
+      } finally {
+        dispatch(setLayoutLoading(false));
+      }
+    };
+
+    initializeLayout();
+  }, [currentNavigationPath, dispatch]);
+
+  // Load layout when navigation path changes
+  React.useEffect(() => {
+    if (!isInitialized) return;
+
+    const loadLayoutForPath = async () => {
+      try {
+        dispatch(setLayoutLoading(true));
+        const savedLayout = await layoutStorage.getLayout(currentNavigationPath);
+        if (savedLayout) {
+          dispatch(setLayoutForPath({ path: currentNavigationPath, layout: savedLayout }));
+        }
+      } catch (error) {
+        console.error('Failed to load layout for path:', currentNavigationPath, error);
+      } finally {
+        dispatch(setLayoutLoading(false));
+      }
+    };
+
+    loadLayoutForPath();
+  }, [currentNavigationPath, dispatch, isInitialized]);
 
   const handleItemClick = (data: ClickData): void => {
     console.log("Item clicked:", data);
@@ -256,6 +312,14 @@ const JsonDrivenDashboard: React.FC = () => {
   };
 
   const onLayoutChange = (layout: ReactGridLayout.Layout[]): void => {
+    // Save layout to Redux store
+    dispatch(setLayoutForPath({ path: currentNavigationPath, layout }));
+    
+    // Save layout to IndexedDB
+    layoutStorage.saveLayout(currentNavigationPath, layout).catch(error => {
+      console.error('Failed to save layout to IndexedDB:', error);
+    });
+
     const updatedWidgets = currentDashboard.widgets.map((widget) => {
       const layoutItem = layout.find((item) => item.i === widget.id);
       if (layoutItem) {
@@ -279,13 +343,36 @@ const JsonDrivenDashboard: React.FC = () => {
     });
   };
 
-  const layout = currentDashboard.widgets.map((w) => ({
-    i: w.id,
-    x: w.position.col,
-    y: w.position.row,
-    w: w.position.width,
-    h: w.position.height,
-  }));
+  // Get layout from Redux store or fallback to widget positions
+  const getCurrentLayout = (): ReactGridLayout.Layout[] => {
+    const savedLayout = layouts[currentNavigationPath];
+    if (savedLayout && savedLayout.length > 0) {
+      return savedLayout;
+    }
+    
+    // Fallback to widget positions
+    return currentDashboard.widgets.map((w) => ({
+      i: w.id,
+      x: w.position.col,
+      y: w.position.row,
+      w: w.position.width,
+      h: w.position.height,
+    }));
+  };
+
+  const layout = getCurrentLayout();
+
+  // Show loading state while initializing
+  if (!isInitialized || isLayoutLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard layout...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -297,6 +384,9 @@ const JsonDrivenDashboard: React.FC = () => {
               JSON-Driven Dashboard with Filters
             </h1>
             <p className="text-gray-600 mt-1">{currentDashboard.description}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Navigation Path: {currentNavigationPath}
+            </p>
           </div>
           <div className="flex items-center gap-4">
             <DashboardManager
@@ -305,6 +395,11 @@ const JsonDrivenDashboard: React.FC = () => {
               onDashboardChange={setCurrentDashboard}
               onSaveDashboard={setCurrentDashboard}
               onLoadDashboard={handleLoadDashboard}
+              currentNavigationPath={currentNavigationPath}
+              onClearLayout={() => {
+                layoutStorage.deleteLayout(currentNavigationPath);
+                dispatch(setLayoutForPath({ path: currentNavigationPath, layout: [] }));
+              }}
             />
             <div className="flex gap-2">
               <button
@@ -387,6 +482,7 @@ const JsonDrivenDashboard: React.FC = () => {
             <li>• Click the edit icon to modify a widget's properties.</li>
             <li>• Use the filter icon to configure widget-specific filters.</li>
             <li>• Remove widgets by clicking the trash icon.</li>
+            <li>• Layout changes are automatically saved for this navigation path.</li>
           </ul>
         </div>
       )}
