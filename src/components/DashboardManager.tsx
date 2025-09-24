@@ -50,8 +50,8 @@ const DashboardManager: React.FC<{
 
   return (
     <>
-      <div className="flex gap-2">
-        <select
+      <div className="flex gap-2 ">
+        {/* <select
           value={currentDashboard.id}
           onChange={(e) => {
             const dashboard = dashboards.find((d) => d.id === e.target.value);
@@ -64,8 +64,13 @@ const DashboardManager: React.FC<{
               {dashboard.name}
             </option>
           ))}
+        </select> */}
+        {/* <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-sm"> */}
+        <select className="bg-transparent text-sm font-medium text-gray-700 focus:outline-none bg-white border border-gray-200 rounded-lg p-2 ">
+          <option>My Dashboard</option>
+          <option>Analytics Dashboard</option>
+          <option>Sales Dashboard</option>
         </select>
-
         <button
           onClick={exportConfig}
           className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-1"
