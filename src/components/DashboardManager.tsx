@@ -111,7 +111,7 @@ const DashboardManager: React.FC<{
               Dashboard Configuration
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Current Navigation Path: <code className="bg-gray-100 px-2 py-1 rounded">{currentNavigationPath}</code>
+              Current Navigation Path: <code className="bg-gray-100 px-2 py-1 rounded text-xs">{currentNavigationPath.replace('->', ' → ')}</code>
             </p>
 
             <textarea

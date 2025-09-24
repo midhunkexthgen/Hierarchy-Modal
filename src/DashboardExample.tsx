@@ -385,7 +385,7 @@ const JsonDrivenDashboard: React.FC = () => {
             </h1>
             <p className="text-gray-600 mt-1">{currentDashboard.description}</p>
             <p className="text-xs text-gray-500 mt-1">
-              Navigation Path: {currentNavigationPath}
+              Navigation Path: {currentNavigationPath.replace('->', ' → ').replace('#', ' | Filters: ')}
             </p>
           </div>
           <div className="flex items-center gap-4">

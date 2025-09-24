@@ -665,9 +665,9 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
 
   // Update navigation path in Redux when it changes
   React.useEffect(() => {
-    const pathKey = generateNavigationPathKey(navigationPath);
+    const pathKey = generateNavigationPathKey(navigationPath, modifierValues);
     dispatch(setCurrentNavigationPath(pathKey));
-  }, [navigationPath, dispatch]);
+  }, [navigationPath, modifierValues, dispatch]);
 
   // Function to get appropriate icon based on icon name or level
   const getIcon = (level: number, iconName?: string): React.ReactNode => {
@@ -759,7 +759,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
     setModifierValues(newModifierValues);
 
     // Update navigation path in Redux
-    const pathKey = generateNavigationPathKey(newPath);
+    const pathKey = generateNavigationPathKey(newPath, modifierValues);
     dispatch(setCurrentNavigationPath(pathKey));
   };
 
@@ -939,7 +939,10 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
             ))}
           </div>
           <div className="mt-2 text-xs text-gray-500">
-            Selected codes: {Object.values(selectedItems).join(" → ")}
+            Navigation codes: {Object.values(selectedItems).join(" → ")}
+          </div>
+          <div className="mt-1 text-xs text-gray-500">
+            Full path key: <code className="bg-gray-100 px-1 rounded">{generateNavigationPathKey(navigationPath, modifierValues)}</code>
           </div>
 
           {/* Display active modifiers */}
