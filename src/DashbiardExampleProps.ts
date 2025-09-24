@@ -128,6 +128,7 @@ interface DashboardWidget {
   };
   customStyles?: React.CSSProperties;
   filters?: FilterConfig[];
+  inVisibleFilters?: FilterConfig[];
 }
 
 interface DashboardLayout {

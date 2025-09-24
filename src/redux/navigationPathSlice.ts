@@ -13,7 +13,6 @@ const naviagtionPathSlice = createSlice({
   initialState,
   reducers: {
     setNavigationPath: (state, action: PayloadAction<RootEntity[]>) => {
-      //   debugger;
       state.navigationPath = action.payload;
     },
   },

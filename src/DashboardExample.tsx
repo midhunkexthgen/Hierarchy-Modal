@@ -45,6 +45,22 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
           defaultValue: { start: "2024-01-01", end: "2024-12-31" },
         },
       ],
+      inVisibleFilters: [
+        {
+          id: "revenue-date-range",
+          type: "date-range",
+          label: "Date Range",
+          field: "date",
+          defaultValue: { start: "2024-01-01", end: "2024-12-31" },
+        },
+        {
+          id: "search-filter",
+          type: "text",
+          label: "Search",
+          field: "name",
+          placeholder: "Search by name...",
+        },
+      ],
     },
     {
       id: "widget-2",
@@ -54,6 +70,38 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
       position: { row: 0, col: 3, width: 3, height: 4 },
       additionalInfo: { outcome: true },
       filters: [
+        {
+          id: "region-filter",
+          type: "multi-select",
+          label: "Regions",
+          field: "name",
+          options: [
+            { label: "UK", value: "UK" },
+            { label: "Germany", value: "Germany" },
+            { label: "France", value: "France" },
+            { label: "Spain", value: "Spain" },
+          ],
+        },
+        {
+          id: "outcome-filter",
+          type: "select",
+          label: "Outcome",
+          field: "outcome",
+          options: [
+            { label: "All", value: "" },
+            { label: "Positive", value: "positive" },
+            { label: "Negative", value: "negative" },
+          ],
+        },
+      ],
+      inVisibleFilters: [
+        {
+          id: "search-filter",
+          type: "text",
+          label: "Search",
+          field: "name",
+          placeholder: "Search by name...",
+        },
         {
           id: "region-filter",
           type: "multi-select",
@@ -94,6 +142,15 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
           defaultValue: "2024-01-15",
         },
       ],
+      inVisibleFilters: [
+        {
+          id: "category-date",
+          type: "single-date",
+          label: "Date",
+          field: "date",
+          defaultValue: "2024-01-15",
+        },
+      ],
     },
     {
       id: "widget-4",
@@ -102,6 +159,17 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
       viewType: "chart",
       position: { row: 0, col: 9, width: 3, height: 4 },
       filters: [
+        {
+          id: "revenue-range",
+          type: "number-range",
+          label: "Revenue Range",
+          field: "revenue",
+          min: 0,
+          max: 1000000,
+          defaultValue: { min: 100000, max: 800000 },
+        },
+      ],
+      inVisibleFilters: [
         {
           id: "revenue-range",
           type: "number-range",
@@ -127,6 +195,38 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
           label: "Search",
           field: "name",
           placeholder: "Search by name...",
+        },
+      ],
+      inVisibleFilters: [
+        {
+          id: "search-filter",
+          type: "text",
+          label: "Search",
+          field: "name",
+          placeholder: "Search by name...",
+        },
+        {
+          id: "region-filter",
+          type: "multi-select",
+          label: "Regions",
+          field: "name",
+          options: [
+            { label: "UK", value: "UK" },
+            { label: "Germany", value: "Germany" },
+            { label: "France", value: "France" },
+            { label: "Spain", value: "Spain" },
+          ],
+        },
+        {
+          id: "outcome-filter",
+          type: "select",
+          label: "Outcome",
+          field: "outcome",
+          options: [
+            { label: "All", value: "" },
+            { label: "Positive", value: "positive" },
+            { label: "Negative", value: "negative" },
+          ],
         },
       ],
     },
@@ -165,6 +265,48 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
             { label: "All Categories", value: "" },
             { label: "Electronics", value: "Electronics" },
             { label: "Fashion", value: "Fashion" },
+          ],
+        },
+      ],
+      inVisibleFilters: [
+        {
+          id: "revenue-date-range",
+          type: "date-range",
+          label: "Date Range",
+          field: "date",
+        },
+        {
+          id: "region-filter",
+          type: "multi-select",
+          label: "Region",
+          field: "region",
+          options: [
+            { label: "UK", value: "UK" },
+            { label: "Germany", value: "Germany" },
+            { label: "France", value: "France" },
+            { label: "Spain", value: "Spain" },
+          ],
+        },
+        {
+          id: "details-category",
+          type: "select",
+          label: "Category",
+          field: "category",
+          options: [
+            { label: "All Categories", value: "" },
+            { label: "Electronics", value: "Electronics" },
+            { label: "Fashion", value: "Fashion" },
+          ],
+        },
+        {
+          id: "outcome-filter",
+          type: "select",
+          label: "Outcome",
+          field: "outcome",
+          options: [
+            { label: "All", value: "" },
+            { label: "Positive", value: "positive" },
+            { label: "Negative", value: "negative" },
           ],
         },
       ],
@@ -412,7 +554,6 @@ const JsonDrivenDashboard: React.FC = () => {
       }
       // return;
     }
-    // debugger;
     dispatch(
       setLayoutForPath({ path: currentNavigationPath, layout: layoutData })
     );
@@ -602,6 +743,7 @@ const JsonDrivenDashboard: React.FC = () => {
                 onDelete={handleDeleteWidget}
                 isEditMode={isEditMode}
                 filters={widget.filters || []}
+                inVisibleFilters={widget.inVisibleFilters || []}
                 appliedFilters={widgetFilters[widget.id] || []}
                 onFiltersChange={(filters) =>
                   handleWidgetFiltersChange(widget.id, filters)

@@ -223,6 +223,7 @@ const MatrixDisplay: React.FC<
   refreshInterval = null,
   customStyles = {},
   filters = [],
+  inVisibleFilters = [],
   onFiltersChange = () => {},
 }) => {
   const [data, setData] = useState<MatrixData>(SAMPLE_DATA);
@@ -349,10 +350,22 @@ const MatrixDisplay: React.FC<
 
   // Apply filters to data
   const filteredData = useMemo(
-    () => applyFiltersToData(data, displayType, localAppliedFilters, filters),
-    [applyFiltersToData, data, displayType, localAppliedFilters, filters]
+    () =>
+      applyFiltersToData(
+        data,
+        displayType,
+        localAppliedFilters,
+        inVisibleFilters
+      ),
+    [
+      applyFiltersToData,
+      data,
+      displayType,
+      localAppliedFilters,
+      inVisibleFilters,
+    ]
   );
-
+  console.log("localAppliedFilters!@!", localAppliedFilters, filters);
   // Fetch data from API
   const fetchData = useCallback(async (): Promise<void> => {
     if (!apiEndpoint) return;
@@ -882,7 +895,6 @@ const MatrixDisplay: React.FC<
       displayType === "summary"
         ? filteredData.summary.regions
         : filteredData.details;
-
     return (
       <div className="bg-white rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
@@ -944,7 +956,6 @@ const MatrixDisplay: React.FC<
             { key: "orders", label: "Orders" },
             { key: "growth", label: "Growth %" },
           ];
-    console.log("tableData", tableData);
     return (
       <div className="bg-white rounded-lg overflow-hidden h-full flex flex-col">
         <div className="px-6 py-4 border-b border-gray-200">
