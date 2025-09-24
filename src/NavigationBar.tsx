@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ChevronRight,
   Package,
@@ -33,6 +33,9 @@ import {
   Filter,
   X,
 } from "lucide-react";
+import { useDispatch } from "react-redux";
+import { setCurrentNavigationPath } from "./redux/layoutSlice";
+import { generateNavigationPathKey } from "./utils/navigationUtils";
 
 // Type definitions
 interface Modifier {
@@ -54,7 +57,10 @@ interface SelectedItems {
 
 interface ModifierValues {
   [level: number]: {
-    [modifierCode: string]: string | number | { startDate: string; endDate: string };
+    [modifierCode: string]:
+      | string
+      | number
+      | { startDate: string; endDate: string };
   };
 }
 
@@ -131,7 +137,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
       icon: "apple",
       modifiers: [
         { code: "DATE_RANGE", displayText: "Date Range" },
-        { code: "REVENUE_TYPE", displayText: "Revenue Type" }
+        { code: "REVENUE_TYPE", displayText: "Revenue Type" },
       ],
       children: [
         {
@@ -140,7 +146,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
           icon: "flag-us",
           modifiers: [
             { code: "DATE_RANGE", displayText: "Period" },
-            { code: "SEGMENT", displayText: "Business Segment" }
+            { code: "SEGMENT", displayText: "Business Segment" },
           ],
           children: [
             {
@@ -149,7 +155,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               icon: "store",
               modifiers: [
                 { code: "DATE_RANGE", displayText: "Sales Period" },
-                { code: "STORE_TYPE", displayText: "Store Type" }
+                { code: "STORE_TYPE", displayText: "Store Type" },
               ],
             },
             {
@@ -158,7 +164,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               icon: "shopping-cart",
               modifiers: [
                 { code: "DATE_RANGE", displayText: "Sales Period" },
-                { code: "CHANNEL", displayText: "Sales Channel" }
+                { code: "CHANNEL", displayText: "Sales Channel" },
               ],
             },
             {
@@ -166,7 +172,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               name: "Enterprise Solutions",
               icon: "building-2",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Contract Period" }
+                { code: "DATE_RANGE", displayText: "Contract Period" },
               ],
             },
             {
@@ -175,7 +181,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               icon: "graduation-cap",
               modifiers: [
                 { code: "DATE_RANGE", displayText: "Academic Year" },
-                { code: "INSTITUTION_TYPE", displayText: "Institution" }
+                { code: "INSTITUTION_TYPE", displayText: "Institution" },
               ],
             },
           ],
@@ -186,16 +192,14 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
           icon: "flag-cn",
           modifiers: [
             { code: "DATE_RANGE", displayText: "Period" },
-            { code: "REGION", displayText: "Chinese Region" }
+            { code: "REGION", displayText: "Chinese Region" },
           ],
           children: [
             {
               code: "APPLE_CHINA_RETAIL",
               name: "Apple Stores China",
               icon: "store",
-              modifiers: [
-                { code: "DATE_RANGE", displayText: "Sales Period" }
-              ],
+              modifiers: [{ code: "DATE_RANGE", displayText: "Sales Period" }],
             },
             {
               code: "APPLE_CHINA_MANUFACTURING",
@@ -203,16 +207,14 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               icon: "factory",
               modifiers: [
                 { code: "DATE_RANGE", displayText: "Production Period" },
-                { code: "PARTNER", displayText: "Manufacturing Partner" }
+                { code: "PARTNER", displayText: "Manufacturing Partner" },
               ],
             },
             {
               code: "APPLE_CHINA_ONLINE",
               name: "Tmall & Online",
               icon: "shopping-cart",
-              modifiers: [
-                { code: "DATE_RANGE", displayText: "Sales Period" }
-              ],
+              modifiers: [{ code: "DATE_RANGE", displayText: "Sales Period" }],
             },
           ],
         },
@@ -222,23 +224,21 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
           icon: "flag-eu",
           modifiers: [
             { code: "DATE_RANGE", displayText: "Period" },
-            { code: "COUNTRY", displayText: "European Country" }
+            { code: "COUNTRY", displayText: "European Country" },
           ],
           children: [
             {
               code: "APPLE_EUROPE_RETAIL",
               name: "European Stores",
               icon: "store",
-              modifiers: [
-                { code: "DATE_RANGE", displayText: "Sales Period" }
-              ],
+              modifiers: [{ code: "DATE_RANGE", displayText: "Sales Period" }],
             },
             {
               code: "APPLE_EUROPE_ENTERPRISE",
               name: "B2B Solutions",
               icon: "building-2",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Contract Period" }
+                { code: "DATE_RANGE", displayText: "Contract Period" },
               ],
             },
             {
@@ -246,7 +246,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               name: "Digital Services",
               icon: "cloud",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Service Period" }
+                { code: "DATE_RANGE", displayText: "Service Period" },
               ],
             },
           ],
@@ -255,24 +255,20 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
           code: "APPLE_JAPAN",
           name: "Japan",
           icon: "flag-jp",
-          modifiers: [
-            { code: "DATE_RANGE", displayText: "Period" }
-          ],
+          modifiers: [{ code: "DATE_RANGE", displayText: "Period" }],
           children: [
             {
               code: "APPLE_JAPAN_RETAIL",
               name: "Apple Store Japan",
               icon: "store",
-              modifiers: [
-                { code: "DATE_RANGE", displayText: "Sales Period" }
-              ],
+              modifiers: [{ code: "DATE_RANGE", displayText: "Sales Period" }],
             },
             {
               code: "APPLE_JAPAN_CARRIER",
               name: "Carrier Partnerships",
               icon: "phone",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Partnership Period" }
+                { code: "DATE_RANGE", displayText: "Partnership Period" },
               ],
             },
           ],
@@ -285,16 +281,14 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
       icon: "microsoft",
       modifiers: [
         { code: "DATE_RANGE", displayText: "Date Range" },
-        { code: "PRODUCT_LINE", displayText: "Product Line" }
+        { code: "PRODUCT_LINE", displayText: "Product Line" },
       ],
       children: [
         {
           code: "MICROSOFT_USA",
           name: "United States",
           icon: "flag-us",
-          modifiers: [
-            { code: "DATE_RANGE", displayText: "Period" }
-          ],
+          modifiers: [{ code: "DATE_RANGE", displayText: "Period" }],
           children: [
             {
               code: "MICROSOFT_USA_CLOUD",
@@ -302,7 +296,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               icon: "cloud",
               modifiers: [
                 { code: "DATE_RANGE", displayText: "Service Period" },
-                { code: "SERVICE_TIER", displayText: "Service Tier" }
+                { code: "SERVICE_TIER", displayText: "Service Tier" },
               ],
             },
             {
@@ -310,7 +304,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               name: "Software Licensing",
               icon: "package",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "License Period" }
+                { code: "DATE_RANGE", displayText: "License Period" },
               ],
             },
             {
@@ -319,16 +313,14 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               icon: "gamepad-2",
               modifiers: [
                 { code: "DATE_RANGE", displayText: "Gaming Period" },
-                { code: "PLATFORM", displayText: "Gaming Platform" }
+                { code: "PLATFORM", displayText: "Gaming Platform" },
               ],
             },
             {
               code: "MICROSOFT_USA_HARDWARE",
               name: "Surface Devices",
               icon: "tablet",
-              modifiers: [
-                { code: "DATE_RANGE", displayText: "Sales Period" }
-              ],
+              modifiers: [{ code: "DATE_RANGE", displayText: "Sales Period" }],
             },
           ],
         },
@@ -336,16 +328,14 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
           code: "MICROSOFT_INDIA",
           name: "India",
           icon: "flag-in",
-          modifiers: [
-            { code: "DATE_RANGE", displayText: "Period" }
-          ],
+          modifiers: [{ code: "DATE_RANGE", displayText: "Period" }],
           children: [
             {
               code: "MICROSOFT_INDIA_SERVICES",
               name: "IT Services",
               icon: "monitor",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Service Period" }
+                { code: "DATE_RANGE", displayText: "Service Period" },
               ],
             },
             {
@@ -353,7 +343,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               name: "Customer Support",
               icon: "headphones",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Support Period" }
+                { code: "DATE_RANGE", displayText: "Support Period" },
               ],
             },
             {
@@ -361,7 +351,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               name: "R&D Centers",
               icon: "code",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Development Period" }
+                { code: "DATE_RANGE", displayText: "Development Period" },
               ],
             },
           ],
@@ -370,24 +360,20 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
           code: "MICROSOFT_GERMANY",
           name: "Germany",
           icon: "flag-de",
-          modifiers: [
-            { code: "DATE_RANGE", displayText: "Period" }
-          ],
+          modifiers: [{ code: "DATE_RANGE", displayText: "Period" }],
           children: [
             {
               code: "MICROSOFT_GERMANY_ENTERPRISE",
               name: "Enterprise Sales",
               icon: "building-2",
-              modifiers: [
-                { code: "DATE_RANGE", displayText: "Sales Period" }
-              ],
+              modifiers: [{ code: "DATE_RANGE", displayText: "Sales Period" }],
             },
             {
               code: "MICROSOFT_GERMANY_CONSULTING",
               name: "Consulting Services",
               icon: "users",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Consulting Period" }
+                { code: "DATE_RANGE", displayText: "Consulting Period" },
               ],
             },
           ],
@@ -400,16 +386,14 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
       icon: "amazon",
       modifiers: [
         { code: "DATE_RANGE", displayText: "Date Range" },
-        { code: "BUSINESS_UNIT", displayText: "Business Unit" }
+        { code: "BUSINESS_UNIT", displayText: "Business Unit" },
       ],
       children: [
         {
           code: "AMAZON_USA",
           name: "United States",
           icon: "flag-us",
-          modifiers: [
-            { code: "DATE_RANGE", displayText: "Period" }
-          ],
+          modifiers: [{ code: "DATE_RANGE", displayText: "Period" }],
           children: [
             {
               code: "AMAZON_USA_ECOMMERCE",
@@ -417,7 +401,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               icon: "shopping-cart",
               modifiers: [
                 { code: "DATE_RANGE", displayText: "Sales Period" },
-                { code: "CATEGORY", displayText: "Product Category" }
+                { code: "CATEGORY", displayText: "Product Category" },
               ],
             },
             {
@@ -426,7 +410,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               icon: "cloud",
               modifiers: [
                 { code: "DATE_RANGE", displayText: "Service Period" },
-                { code: "SERVICE_TYPE", displayText: "AWS Service" }
+                { code: "SERVICE_TYPE", displayText: "AWS Service" },
               ],
             },
             {
@@ -434,7 +418,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               name: "Prime Membership",
               icon: "crown",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Membership Period" }
+                { code: "DATE_RANGE", displayText: "Membership Period" },
               ],
             },
             {
@@ -442,7 +426,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               name: "Advertising Services",
               icon: "megaphone",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Campaign Period" }
+                { code: "DATE_RANGE", displayText: "Campaign Period" },
               ],
             },
             {
@@ -450,7 +434,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               name: "Fulfillment Centers",
               icon: "truck",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Fulfillment Period" }
+                { code: "DATE_RANGE", displayText: "Fulfillment Period" },
               ],
             },
           ],
@@ -459,24 +443,20 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
           code: "AMAZON_UK",
           name: "United Kingdom",
           icon: "flag-gb",
-          modifiers: [
-            { code: "DATE_RANGE", displayText: "Period" }
-          ],
+          modifiers: [{ code: "DATE_RANGE", displayText: "Period" }],
           children: [
             {
               code: "AMAZON_UK_RETAIL",
               name: "Amazon.co.uk",
               icon: "shopping-cart",
-              modifiers: [
-                { code: "DATE_RANGE", displayText: "Sales Period" }
-              ],
+              modifiers: [{ code: "DATE_RANGE", displayText: "Sales Period" }],
             },
             {
               code: "AMAZON_UK_AWS",
               name: "AWS Europe",
               icon: "cloud",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Service Period" }
+                { code: "DATE_RANGE", displayText: "Service Period" },
               ],
             },
             {
@@ -484,7 +464,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               name: "Amazon Fresh",
               icon: "apple",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Delivery Period" }
+                { code: "DATE_RANGE", displayText: "Delivery Period" },
               ],
             },
           ],
@@ -493,24 +473,20 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
           code: "AMAZON_BRAZIL",
           name: "Brazil",
           icon: "flag-br",
-          modifiers: [
-            { code: "DATE_RANGE", displayText: "Period" }
-          ],
+          modifiers: [{ code: "DATE_RANGE", displayText: "Period" }],
           children: [
             {
               code: "AMAZON_BRAZIL_MARKETPLACE",
               name: "Brazilian Marketplace",
               icon: "store",
-              modifiers: [
-                { code: "DATE_RANGE", displayText: "Sales Period" }
-              ],
+              modifiers: [{ code: "DATE_RANGE", displayText: "Sales Period" }],
             },
             {
               code: "AMAZON_BRAZIL_LOGISTICS",
               name: "Local Delivery",
               icon: "truck",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Delivery Period" }
+                { code: "DATE_RANGE", displayText: "Delivery Period" },
               ],
             },
           ],
@@ -519,24 +495,20 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
           code: "AMAZON_AUSTRALIA",
           name: "Australia",
           icon: "flag-au",
-          modifiers: [
-            { code: "DATE_RANGE", displayText: "Period" }
-          ],
+          modifiers: [{ code: "DATE_RANGE", displayText: "Period" }],
           children: [
             {
               code: "AMAZON_AUSTRALIA_RETAIL",
               name: "Amazon.com.au",
               icon: "shopping-cart",
-              modifiers: [
-                { code: "DATE_RANGE", displayText: "Sales Period" }
-              ],
+              modifiers: [{ code: "DATE_RANGE", displayText: "Sales Period" }],
             },
             {
               code: "AMAZON_AUSTRALIA_AWS",
               name: "AWS Australia",
               icon: "server",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Service Period" }
+                { code: "DATE_RANGE", displayText: "Service Period" },
               ],
             },
           ],
@@ -549,16 +521,14 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
       icon: "google",
       modifiers: [
         { code: "DATE_RANGE", displayText: "Date Range" },
-        { code: "REVENUE_STREAM", displayText: "Revenue Stream" }
+        { code: "REVENUE_STREAM", displayText: "Revenue Stream" },
       ],
       children: [
         {
           code: "GOOGLE_USA",
           name: "United States",
           icon: "flag-us",
-          modifiers: [
-            { code: "DATE_RANGE", displayText: "Period" }
-          ],
+          modifiers: [{ code: "DATE_RANGE", displayText: "Period" }],
           children: [
             {
               code: "GOOGLE_USA_SEARCH",
@@ -566,7 +536,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               icon: "search",
               modifiers: [
                 { code: "DATE_RANGE", displayText: "Ad Period" },
-                { code: "AD_TYPE", displayText: "Advertisement Type" }
+                { code: "AD_TYPE", displayText: "Advertisement Type" },
               ],
             },
             {
@@ -574,7 +544,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               name: "Google Cloud Platform",
               icon: "cloud",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Service Period" }
+                { code: "DATE_RANGE", displayText: "Service Period" },
               ],
             },
             {
@@ -583,16 +553,14 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               icon: "video",
               modifiers: [
                 { code: "DATE_RANGE", displayText: "Content Period" },
-                { code: "CONTENT_TYPE", displayText: "Content Type" }
+                { code: "CONTENT_TYPE", displayText: "Content Type" },
               ],
             },
             {
               code: "GOOGLE_USA_HARDWARE",
               name: "Pixel & Nest",
               icon: "smartphone",
-              modifiers: [
-                { code: "DATE_RANGE", displayText: "Sales Period" }
-              ],
+              modifiers: [{ code: "DATE_RANGE", displayText: "Sales Period" }],
             },
           ],
         },
@@ -600,25 +568,21 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
           code: "GOOGLE_IRELAND",
           name: "Ireland",
           icon: "flag-ie",
-          modifiers: [
-            { code: "DATE_RANGE", displayText: "Period" }
-          ],
+          modifiers: [{ code: "DATE_RANGE", displayText: "Period" }],
           children: [
             {
               code: "GOOGLE_IRELAND_EMEA",
               name: "EMEA Operations",
               icon: "globe",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Operations Period" }
+                { code: "DATE_RANGE", displayText: "Operations Period" },
               ],
             },
             {
               code: "GOOGLE_IRELAND_SALES",
               name: "International Sales",
               icon: "trending-up",
-              modifiers: [
-                { code: "DATE_RANGE", displayText: "Sales Period" }
-              ],
+              modifiers: [{ code: "DATE_RANGE", displayText: "Sales Period" }],
             },
           ],
         },
@@ -626,16 +590,14 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
           code: "GOOGLE_SINGAPORE",
           name: "Singapore",
           icon: "flag-sg",
-          modifiers: [
-            { code: "DATE_RANGE", displayText: "Period" }
-          ],
+          modifiers: [{ code: "DATE_RANGE", displayText: "Period" }],
           children: [
             {
               code: "GOOGLE_SINGAPORE_APAC",
               name: "APAC Hub",
               icon: "map",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Regional Period" }
+                { code: "DATE_RANGE", displayText: "Regional Period" },
               ],
             },
             {
@@ -643,7 +605,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               name: "GCP Asia",
               icon: "server",
               modifiers: [
-                { code: "DATE_RANGE", displayText: "Service Period" }
+                { code: "DATE_RANGE", displayText: "Service Period" },
               ],
             },
           ],
@@ -653,12 +615,22 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
   ];
 
   const data = propData || defaultData;
-
+  console.log("data", data);
   // State to manage the navigation path and selected items at each level
   const [navigationPath, setNavigationPath] = useState<DimensionItem[]>([]);
+  const dispatch = useDispatch();
+
   const [selectedItems, setSelectedItems] = useState<SelectedItems>({});
   const [modifierValues, setModifierValues] = useState<ModifierValues>({});
 
+  // Update navigation path in Redux when it changes
+  useEffect(() => {
+    const pathKey = generateNavigationPathKey(navigationPath, modifierValues);
+    dispatch(setCurrentNavigationPath(pathKey));
+  }, [navigationPath, modifierValues, dispatch]);
+  // const navigationPath = useSelector(
+  //   (state: RootState) => state.navigationPath?.navigationPath || []
+  // );
   // Function to get appropriate icon based on icon name or level
   const getIcon = (level: number, iconName?: string): React.ReactNode => {
     // If iconName is provided, use specific icons
@@ -747,22 +719,30 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
       delete newModifierValues[i];
     }
     setModifierValues(newModifierValues);
+
+    // Update navigation path in Redux
+    const pathKey = generateNavigationPathKey(newPath, modifierValues);
+    dispatch(setCurrentNavigationPath(pathKey));
   };
 
   // Handle modifier value changes
-  const handleModifierChange = (level: number, modifierCode: string, value: string | number | { startDate: string; endDate: string }): void => {
-    setModifierValues(prev => ({
+  const handleModifierChange = (
+    level: number,
+    modifierCode: string,
+    value: string | number | { startDate: string; endDate: string }
+  ): void => {
+    setModifierValues((prev) => ({
       ...prev,
       [level]: {
         ...prev[level],
-        [modifierCode]: value
-      }
+        [modifierCode]: value,
+      },
     }));
   };
 
   // Clear modifier value
   const clearModifier = (level: number, modifierCode: string): void => {
-    setModifierValues(prev => {
+    setModifierValues((prev) => {
       const newValues = { ...prev };
       if (newValues[level]) {
         delete newValues[level][modifierCode];
@@ -775,7 +755,10 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
   };
 
   // Render modifier component based on code
-  const renderModifier = (modifier: Modifier, level: number): React.ReactNode => {
+  const renderModifier = (
+    modifier: Modifier,
+    level: number
+  ): React.ReactNode => {
     const currentValue = modifierValues[level]?.[modifier.code];
 
     switch (modifier.code) {
@@ -783,7 +766,7 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
         return (
           <DateRangeFilter
             key={modifier.code}
-            onDateChange={(startDate, endDate) => 
+            onDateChange={(startDate, endDate) =>
               handleModifierChange(level, modifier.code, { startDate, endDate })
             }
             startDate={currentValue?.startDate || ""}
@@ -795,7 +778,9 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
           <GenericFilter
             key={modifier.code}
             modifier={modifier}
-            onFilterChange={(value) => handleModifierChange(level, modifier.code, value)}
+            onFilterChange={(value) =>
+              handleModifierChange(level, modifier.code, value)
+            }
             value={currentValue || ""}
           />
         );
@@ -815,11 +800,11 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
   // Get current selected item for a level
   const getCurrentItem = (level: number): DimensionItem | null => {
     if (level === 0) {
-      return data.find(item => item.code === selectedItems[level]) || null;
+      return data.find((item) => item.code === selectedItems[level]) || null;
     }
-    
+
     const items = getItemsForLevel(level);
-    return items.find(item => item.code === selectedItems[level]) || null;
+    return items.find((item) => item.code === selectedItems[level]) || null;
   };
 
   // Render a navigation bar for a specific level
@@ -868,29 +853,34 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
         </div>
 
         {/* Modifiers row */}
-        {currentItem && currentItem.modifiers && currentItem.modifiers.length > 0 && (
-          <div className="bg-gray-50 px-4 py-2 border-t border-gray-200">
-            <div className="flex items-center space-x-3 overflow-x-auto">
-              <span className="text-xs font-medium text-gray-600 whitespace-nowrap">
-                Filters:
-              </span>
-              {currentItem.modifiers.map((modifier) => (
-                <div key={modifier.code} className="flex items-center space-x-1">
-                  {renderModifier(modifier, level)}
-                  {modifierValues[level]?.[modifier.code] && (
-                    <button
-                      onClick={() => clearModifier(level, modifier.code)}
-                      className="text-gray-400 hover:text-gray-600 p-1"
-                      title="Clear filter"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-              ))}
+        {currentItem &&
+          currentItem.modifiers &&
+          currentItem.modifiers.length > 0 && (
+            <div className="bg-gray-50 px-4 py-2 border-t border-gray-200">
+              <div className="flex items-center space-x-3 overflow-x-auto">
+                <span className="text-xs font-medium text-gray-600 whitespace-nowrap">
+                  Filters:
+                </span>
+                {currentItem.modifiers.map((modifier) => (
+                  <div
+                    key={modifier.code}
+                    className="flex items-center space-x-1"
+                  >
+                    {renderModifier(modifier, level)}
+                    {modifierValues[level]?.[modifier.code] && (
+                      <button
+                        onClick={() => clearModifier(level, modifier.code)}
+                        className="text-gray-400 hover:text-gray-600 p-1"
+                        title="Clear filter"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
     );
   };
@@ -935,41 +925,73 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
                 Active Filters:
               </h4>
               <div className="space-y-2">
-                {Object.entries(modifierValues).map(([levelStr, levelModifiers]) => {
-                  const level = parseInt(levelStr);
-                  const levelItem = level < navigationPath.length ? navigationPath[level] : null;
-                  
-                  return (
-                    <div key={level} className="text-xs">
-                      <span className="font-medium text-gray-600">
-                        {levelItem ? levelItem.name : `Level ${level}`}:
-                      </span>
-                      <div className="ml-2 mt-1 space-y-1">
-                        {Object.entries(levelModifiers).map(([modifierCode, value]) => (
-                          <div key={modifierCode} className="flex items-center space-x-2">
-                            <span className="text-gray-500">{modifierCode}:</span>
-                            <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs">
-                              {value && typeof value === 'object' && 'startDate' in value && 'endDate' in value
-                                ? `${(value as { startDate: string; endDate: string }).startDate} to ${(value as { startDate: string; endDate: string }).endDate}`
-                                : value && typeof value === 'object'
-                                ? JSON.stringify(value)
-                                : typeof value === 'string' || typeof value === 'number'
-                                ? value
-                                : ""}
-                            </span>
-                            <button
-                              onClick={() => clearModifier(level, modifierCode)}
-                              className="text-gray-400 hover:text-red-500"
-                              title="Remove filter"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
+                {Object.entries(modifierValues).map(
+                  ([levelStr, levelModifiers]) => {
+                    const level = parseInt(levelStr);
+                    const levelItem =
+                      level < navigationPath.length
+                        ? navigationPath[level]
+                        : null;
+
+                    return (
+                      <div key={level} className="text-xs">
+                        <span className="font-medium text-gray-600">
+                          {levelItem ? levelItem.name : `Level ${level}`}:
+                        </span>
+                        <div className="ml-2 mt-1 space-y-1">
+                          {Object.entries(levelModifiers).map(
+                            ([modifierCode, value]) => (
+                              <div
+                                key={modifierCode}
+                                className="flex items-center space-x-2"
+                              >
+                                <span className="text-gray-500">
+                                  {modifierCode}:
+                                </span>
+                                <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs">
+                                  {value &&
+                                  typeof value === "object" &&
+                                  "startDate" in value &&
+                                  "endDate" in value
+                                    ? `${
+                                        (
+                                          value as {
+                                            startDate: string;
+                                            endDate: string;
+                                          }
+                                        ).startDate
+                                      } to ${
+                                        (
+                                          value as {
+                                            startDate: string;
+                                            endDate: string;
+                                          }
+                                        ).endDate
+                                      }`
+                                    : value && typeof value === "object"
+                                    ? JSON.stringify(value)
+                                    : typeof value === "string" ||
+                                      typeof value === "number"
+                                    ? value
+                                    : ""}
+                                </span>
+                                <button
+                                  onClick={() =>
+                                    clearModifier(level, modifierCode)
+                                  }
+                                  className="text-gray-400 hover:text-red-500"
+                                  title="Remove filter"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  }
+                )}
               </div>
             </div>
           )}

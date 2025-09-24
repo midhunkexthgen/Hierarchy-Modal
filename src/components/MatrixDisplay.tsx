@@ -696,7 +696,6 @@ const MatrixDisplay: React.FC<
         ...item,
         ordersScaled: (item.orders || 0) * 100, // Scale orders for visibility
       }));
-    debugger;
 
     revenueSeries.columns.template.setAll({
       cornerRadiusTL: 5,

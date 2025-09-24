@@ -1,4 +1,4 @@
-import React, { useState, type JSX } from "react";
+import React, { useEffect, useState } from "react";
 import { Plus, Grid, Settings } from "lucide-react";
 import type {
   DashboardLayout,
@@ -6,6 +6,9 @@ import type {
   DashboardWidget,
   ClickData,
 } from "./DashbiardExampleProps";
+import type { RootState } from "./redux/store";
+import { setLayoutForPath, setLayoutLoading } from "./redux/layoutSlice";
+import { layoutStorage } from "./utils/layoutStorage";
 import DashboardManager from "./components/DashboardManager";
 import MatrixDisplay from "./components/MatrixDisplay";
 import WidgetEditor from "./components/WidgetEditor";
@@ -13,6 +16,7 @@ import { Responsive, WidthProvider } from "react-grid-layout";
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
+import { useDispatch, useSelector } from "react-redux";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -47,7 +51,7 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
       title: "Regional Performance",
       displayType: "summary",
       viewType: "comparison",
-      position: { row: 0, col: 3, width: 3, height: 2 },
+      position: { row: 0, col: 3, width: 3, height: 4 },
       additionalInfo: { outcome: true },
       filters: [
         {
@@ -169,9 +173,22 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
 };
 
 const JsonDrivenDashboard: React.FC = () => {
+  // const { saveLayout, getLayout } = useIndexedDB();
+  const dispatch = useDispatch();
+  const { currentNavigationPath, layouts, isLayoutLoading } = useSelector(
+    (state: RootState) => state.layout
+  );
+
+  // const navigationPath = useSelector(
+  //   (state: RootState) => state.navigationPath?.navigationPath || []
+  // );
+  // const currentNavigationPath = buildPaths(navigationPath).join("\n") || "/";
   const [dashboards, setDashboards] = useState<DashboardLayout[]>([
     DEFAULT_DASHBOARD,
   ]);
+
+  // const [savedStraggedLayout, setSavedStraggedLayout] = useState({});
+  // const [key, setKey] = useState("");
   const [currentDashboard, setCurrentDashboard] =
     useState<DashboardLayout>(DEFAULT_DASHBOARD);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -183,8 +200,73 @@ const JsonDrivenDashboard: React.FC = () => {
     Record<string, AppliedFilter[]>
   >({});
 
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize IndexedDB and load layout for current navigation path
+  useEffect(() => {
+    const initializeLayout = async () => {
+      try {
+        dispatch(setLayoutLoading(true));
+        await layoutStorage.init();
+
+        // Load layout for current navigation path
+        const savedLayout = await layoutStorage.getLayout(
+          currentNavigationPath
+        );
+        if (savedLayout) {
+          dispatch(
+            setLayoutForPath({
+              path: currentNavigationPath,
+              layout: savedLayout,
+            })
+          );
+        }
+
+        setIsInitialized(true);
+      } catch (error) {
+        console.error("Failed to initialize layout storage:", error);
+        setIsInitialized(true);
+      } finally {
+        dispatch(setLayoutLoading(false));
+      }
+    };
+
+    initializeLayout();
+  }, [currentNavigationPath, dispatch]);
+
+  // Load layout when navigation path changes
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const loadLayoutForPath = async () => {
+      try {
+        dispatch(setLayoutLoading(true));
+        const savedLayout = await layoutStorage.getLayout(
+          currentNavigationPath
+        );
+        if (savedLayout) {
+          dispatch(
+            setLayoutForPath({
+              path: currentNavigationPath,
+              layout: savedLayout,
+            })
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Failed to load layout for path:",
+          currentNavigationPath,
+          error
+        );
+      } finally {
+        dispatch(setLayoutLoading(false));
+      }
+    };
+
+    loadLayoutForPath();
+  }, [currentNavigationPath, dispatch, isInitialized]);
+
   const handleItemClick = (data: ClickData): void => {
-    console.log("Item clicked:", data);
     if (!isEditMode) {
       // Handle item click logic
     }
@@ -256,12 +338,31 @@ const JsonDrivenDashboard: React.FC = () => {
     }
   };
 
-  const onLayoutChange = (
-    layout: ReactGridLayout.Layout[],
-    layouts: { [key: string]: ReactGridLayout.Layout[] }
-  ): void => {
+  const onLayoutChange = async (layout: ReactGridLayout.Layout[]): void => {
+    let layoutData = layout;
+    // Save layout to Redux store
+    const savedLayout = await layoutStorage.getLayout(currentNavigationPath);
+    if (!savedLayout) {
+      const aa = await layoutStorage.getLayout("default");
+      if (aa) {
+        layoutData = aa;
+      }
+      // return;
+    }
+    // debugger;
+    dispatch(
+      setLayoutForPath({ path: currentNavigationPath, layout: layoutData })
+    );
+
+    // Save layout to IndexedDB
+    layoutStorage
+      .saveLayout(currentNavigationPath, layoutData)
+      .catch((error) => {
+        console.error("Failed to save layout to IndexedDB:", error);
+      });
+
     const updatedWidgets = currentDashboard.widgets.map((widget) => {
-      const layoutItem = layout.find((item) => item.i === widget.id);
+      const layoutItem = layoutData.find((item) => item.i === widget.id);
       if (layoutItem) {
         return {
           ...widget,
@@ -312,22 +413,36 @@ const JsonDrivenDashboard: React.FC = () => {
     }
   };
 
-  const layout = currentDashboard.widgets.map((w) => ({
-    i: w.id,
-    x: w.position.col,
-    y: w.position.row,
-    w: w.position.width,
-    h: w.position.height,
-    // customHeight: w.customHeight,
-  }));
+  // Get layout from Redux store or fallback to widget positions
+  const getCurrentLayout = (): ReactGridLayout.Layout[] => {
+    const savedLayout = layouts[currentNavigationPath];
+    if (savedLayout && savedLayout.length > 0) {
+      return savedLayout;
+    }
 
-  const layouts = {
-    lg: layout,
-    md: layout,
-    sm: layout,
-    xs: layout,
-    xxs: layout,
+    // Fallback to widget positions
+    return DEFAULT_DASHBOARD.widgets.map((w) => ({
+      i: w.id,
+      x: w.position.col,
+      y: w.position.row,
+      w: w.position.width,
+      h: w.position.height,
+    }));
   };
+
+  const layout = getCurrentLayout();
+
+  // Show loading state while initializing
+  if (!isInitialized || isLayoutLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard layout...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -347,6 +462,13 @@ const JsonDrivenDashboard: React.FC = () => {
               onDashboardChange={setCurrentDashboard}
               onSaveDashboard={setCurrentDashboard}
               onLoadDashboard={handleLoadDashboard}
+              currentNavigationPath={currentNavigationPath}
+              onClearLayout={() => {
+                layoutStorage.deleteLayout(currentNavigationPath);
+                dispatch(
+                  setLayoutForPath({ path: currentNavigationPath, layout: [] })
+                );
+              }}
             />
             <div className="flex gap-2">
               <button
@@ -358,7 +480,9 @@ const JsonDrivenDashboard: React.FC = () => {
                 Add Widget
               </button>
               <button
-                onClick={() => setIsEditMode(!isEditMode)}
+                onClick={() => {
+                  setIsEditMode(!isEditMode);
+                }}
                 className={`px-4 py-2 rounded-md transition-colors flex items-center gap-1 ${
                   isEditMode
                     ? "bg-red-600 text-white hover:bg-red-700"
@@ -376,8 +500,8 @@ const JsonDrivenDashboard: React.FC = () => {
       <div className="p-6">
         <ResponsiveGridLayout
           className="layout"
-          // layouts={{ lg: layout }}
-          layouts={layouts}
+          layouts={{ lg: layout }}
+          // layouts={layouts}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
           rowHeight={100}
@@ -429,18 +553,6 @@ const JsonDrivenDashboard: React.FC = () => {
         }}
         onSave={handleSaveWidget}
       />
-
-      {/* {isEditMode && (
-        <div className="fixed bottom-4 right-4 bg-blue-600 text-white p-4 rounded-lg shadow-lg max-w-sm">
-          <h4 className="font-semibold mb-2">Edit Mode Active</h4>
-          <ul className="text-sm space-y-1">
-            <li>• Drag and resize widgets as needed.</li>
-            <li>• Click the edit icon to modify a widget's properties.</li>
-            <li>• Use the filter icon to configure widget-specific filters.</li>
-            <li>• Remove widgets by clicking the trash icon.</li>
-          </ul>
-        </div>
-      )} */}
     </div>
   );
 };

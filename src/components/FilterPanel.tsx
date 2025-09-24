@@ -40,7 +40,7 @@ const FilterPanel: React.FC<{
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-lg min-w-64">
+    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-lg min-w-64 z-50">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-gray-900 flex items-center">
           <Filter className="w-4 h-4 mr-2" />
