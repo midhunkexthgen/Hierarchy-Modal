@@ -33,3 +33,4 @@ export const generateNavigationPathKey = (navigationPath: any[], modifierValues?
 
 export const isValidNavigationPath = (navigationPath: any[]): boolean => {
   return Array.isArray(navigationPath) && navigationPath.length > 0;
+}
