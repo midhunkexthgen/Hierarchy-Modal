@@ -130,6 +130,7 @@ const GenericFilter: React.FC<{
 };
 
 const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
+  const dispatch = useDispatch();
   const defaultData: DimensionItem[] = [
     {
       code: "APPLE",
@@ -615,10 +616,8 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
   ];
 
   const data = propData || defaultData;
-  console.log("data", data);
   // State to manage the navigation path and selected items at each level
   const [navigationPath, setNavigationPath] = useState<DimensionItem[]>([]);
-  const dispatch = useDispatch();
 
   const [selectedItems, setSelectedItems] = useState<SelectedItems>({});
   const [modifierValues, setModifierValues] = useState<ModifierValues>({});
@@ -915,7 +914,13 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
             ))}
           </div>
           <div className="mt-2 text-xs text-gray-500">
-            Selected codes: {Object.values(selectedItems).join(" → ")}
+            Navigation codes: {Object.values(selectedItems).join(" → ")}
+          </div>
+          <div className="mt-1 text-xs text-gray-500">
+            Full path key:{" "}
+            <code className="bg-gray-100 px-1 rounded">
+              {generateNavigationPathKey(navigationPath, modifierValues)}
+            </code>
           </div>
 
           {/* Display active modifiers */}

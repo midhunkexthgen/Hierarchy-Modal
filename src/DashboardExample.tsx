@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, type JSX } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { Plus, Grid, Settings } from "lucide-react";
 import type {
   DashboardLayout,
@@ -16,7 +17,6 @@ import { Responsive, WidthProvider } from "react-grid-layout";
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-import { useDispatch, useSelector } from "react-redux";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -199,8 +199,71 @@ const JsonDrivenDashboard: React.FC = () => {
   const [widgetFilters, setWidgetFilters] = useState<
     Record<string, AppliedFilter[]>
   >({});
-
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize IndexedDB and load layout for current navigation path
+  React.useEffect(() => {
+    const initializeLayout = async () => {
+      try {
+        dispatch(setLayoutLoading(true));
+        await layoutStorage.init();
+
+        // Load layout for current navigation path
+        const savedLayout = await layoutStorage.getLayout(
+          currentNavigationPath
+        );
+        if (savedLayout) {
+          dispatch(
+            setLayoutForPath({
+              path: currentNavigationPath,
+              layout: savedLayout,
+            })
+          );
+        }
+
+        setIsInitialized(true);
+      } catch (error) {
+        console.error("Failed to initialize layout storage:", error);
+        setIsInitialized(true);
+      } finally {
+        dispatch(setLayoutLoading(false));
+      }
+    };
+
+    initializeLayout();
+  }, [currentNavigationPath, dispatch]);
+
+  // Load layout when navigation path changes
+  React.useEffect(() => {
+    if (!isInitialized) return;
+
+    const loadLayoutForPath = async () => {
+      try {
+        dispatch(setLayoutLoading(true));
+        const savedLayout = await layoutStorage.getLayout(
+          currentNavigationPath
+        );
+        if (savedLayout) {
+          dispatch(
+            setLayoutForPath({
+              path: currentNavigationPath,
+              layout: savedLayout,
+            })
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Failed to load layout for path:",
+          currentNavigationPath,
+          error
+        );
+      } finally {
+        dispatch(setLayoutLoading(false));
+      }
+    };
+
+    loadLayoutForPath();
+  }, [currentNavigationPath, dispatch, isInitialized]);
 
   // Initialize IndexedDB and load layout for current navigation path
   useEffect(() => {
@@ -454,6 +517,12 @@ const JsonDrivenDashboard: React.FC = () => {
               Dashboard
             </h1>
             <p className="text-gray-600 mt-1">{currentDashboard.description}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Navigation Path:{" "}
+              {currentNavigationPath
+                .replace("->", " → ")
+                .replace("#", " | Filters: ")}
+            </p>
           </div>
           <div className="flex items-center gap-4">
             <DashboardManager

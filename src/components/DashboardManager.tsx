@@ -1,4 +1,4 @@
-import { Download, Upload } from "lucide-react";
+import { Download, Upload, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import type { DashboardLayout } from "../DashbiardExampleProps";
 
@@ -7,7 +7,16 @@ const DashboardManager: React.FC<{
   currentDashboard: DashboardLayout;
   onDashboardChange: (dashboard: DashboardLayout) => void;
   onLoadDashboard: (config: string) => void;
-}> = ({ dashboards, currentDashboard, onDashboardChange, onLoadDashboard }) => {
+  currentNavigationPath: string;
+  onClearLayout: () => void;
+}> = ({
+  dashboards,
+  currentDashboard,
+  onDashboardChange,
+  onLoadDashboard,
+  currentNavigationPath,
+  onClearLayout,
+}) => {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [configText, setConfigText] = useState("");
 
@@ -84,6 +93,14 @@ const DashboardManager: React.FC<{
         >
           <Upload className="w-4 h-4" />
         </button>
+
+        <button
+          onClick={onClearLayout}
+          className="px-3 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors flex items-center gap-1"
+          title="Reset Layout for Current Path"
+        >
+          <RotateCcw className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Configuration Modal */}
@@ -93,6 +110,12 @@ const DashboardManager: React.FC<{
             <h3 className="text-lg font-semibold mb-4">
               Dashboard Configuration
             </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Current Navigation Path:{" "}
+              <code className="bg-gray-100 px-2 py-1 rounded text-xs">
+                {currentNavigationPath.replace("->", " → ")}
+              </code>
+            </p>
 
             <textarea
               value={configText}
