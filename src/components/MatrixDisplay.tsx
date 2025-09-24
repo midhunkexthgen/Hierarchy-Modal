@@ -12,6 +12,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -205,6 +206,7 @@ const MatrixDisplay: React.FC<
     onEdit?: (widgetId: string) => void;
     onDelete?: (widgetId: string) => void;
     isEditMode?: boolean;
+    onHeightChange?: (widgetId: string, height: number) => void;
   }
 > = ({
   widget,
@@ -212,6 +214,7 @@ const MatrixDisplay: React.FC<
   onEdit,
   onDelete,
   isEditMode = false,
+  onHeightChange,
   apiEndpoint = null,
   displayType = "summary",
   viewType = "tabular",
@@ -239,6 +242,14 @@ const MatrixDisplay: React.FC<
 
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<am5.Root | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const element = contentRef.current;
+    if (viewType !== "comparison" || !element || !onHeightChange) return;
+
+    onHeightChange(widget.id, element.scrollHeight);
+  }, [viewType, onHeightChange, widget.id]);
 
   const applyFiltersToData = useCallback(
     (
@@ -388,14 +399,13 @@ const MatrixDisplay: React.FC<
     }
   }, [apiEndpoint, localAppliedFilters, filters]);
 
-  useEffect(() => {
-    fetchData();
+  useLayoutEffect(() => {
+    const element = contentRef.current;
+    if (isEditMode || viewType !== "comparison" || !element || !onHeightChange)
+      return;
 
-    if (refreshInterval) {
-      const interval = setInterval(fetchData, refreshInterval);
-      return () => clearInterval(interval);
-    }
-  }, [fetchData, refreshInterval]);
+    onHeightChange(widget.id, element.scrollHeight, element);
+  }, []);
 
   // Cleanup amCharts on unmount
   useEffect(() => {
@@ -560,6 +570,24 @@ const MatrixDisplay: React.FC<
       }
     });
 
+    // const filteredChartData =
+    //   localAppliedFilters?.find((el) => el.filterId === "region-filter")
+    //     ?.value || [];
+    // xAxis.data.setAll(
+    //   Array.isArray(filteredChartData) && filteredChartData.length > 0
+    //     ? chartData.filter((ele) =>
+    //         filteredChartData.includes(ele.name as string)
+    //       )
+    //     : chartData
+    // );
+    // series.data.setAll(
+    //   Array.isArray(filteredChartData) && filteredChartData.length > 0
+    //     ? chartData.filter((ele) =>
+    //         filteredChartData.includes(ele.name as string)
+    //       )
+    //     : chartData
+    // );
+
     xAxis.data.setAll(chartData);
     series.data.setAll(chartData);
 
@@ -629,7 +657,6 @@ const MatrixDisplay: React.FC<
         fill: am5.color("#10B981"),
       })
     );
-
     // Scale orders data for better visualization
     // const filteredChartData =
     //   localAppliedFilters?.find((el) => el.filterId === "region-filter")
@@ -648,12 +675,28 @@ const MatrixDisplay: React.FC<
         return true;
       };
     };
+    const createCategoryFilter = (localAppliedFilters: any[]) => {
+      return (item: any) => {
+        if (
+          localAppliedFilters?.find((el) => el.filterId === "outcome-filter")
+        ) {
+          return localAppliedFilters?.some(
+            (region) =>
+              region.filterId === "outcome-filter" &&
+              region.value?.includes(item?.outcome)
+          );
+        }
+        return true;
+      };
+    };
     const scaledData = chartData
       .filter(createRegionFilter(localAppliedFilters))
+      .filter(createCategoryFilter(localAppliedFilters))
       .map((item) => ({
         ...item,
         ordersScaled: (item.orders || 0) * 100, // Scale orders for visibility
       }));
+    debugger;
 
     revenueSeries.columns.template.setAll({
       cornerRadiusTL: 5,
@@ -779,7 +822,7 @@ const MatrixDisplay: React.FC<
     const label = displayType === "summary" ? "Total Revenue" : "Revenue";
 
     return (
-      <div className="bg-white rounded-lg border shadow-sm p-6 text-center h-full">
+      <div className="bg-white rounded-lg p-6 text-center ">
         <h3 className="text-lg font-medium text-gray-900 mb-2">{label}</h3>
         <div className="text-3xl font-bold text-blue-600 mb-2">
           ${value?.toLocaleString() || "N/A"}
@@ -806,7 +849,7 @@ const MatrixDisplay: React.FC<
   // Chart View (amCharts)
   const renderChart = (): JSX.Element => {
     return (
-      <div className="bg-white rounded-lg border shadow-sm p-6 h-full">
+      <div className="bg-white rounded-lg p-6 h-full">
         <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
           <BarChart3 className="w-5 h-5 mr-2" />
           Performance Chart
@@ -822,7 +865,7 @@ const MatrixDisplay: React.FC<
   // Pie Chart View (amCharts)
   const renderPieChart = (): JSX.Element => {
     return (
-      <div className="bg-white rounded-lg border shadow-sm p-6 h-full">
+      <div className="bg-white rounded-lg p-6 h-full">
         <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
           <BarChart3 className="w-5 h-5 mr-2" />
           Distribution
@@ -835,23 +878,24 @@ const MatrixDisplay: React.FC<
     );
   };
 
-  // Comparison View
   const renderComparison = (): JSX.Element => {
     const items =
       displayType === "summary"
         ? filteredData.summary.regions
-        : filteredData.details.slice(0, 4);
+        : filteredData.details;
+
     return (
-      <div className="bg-white rounded-lg border shadow-sm p-6 h-full">
+      <div className="bg-white rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
           <Users className="w-5 h-5 mr-2" />
           Comparison View
         </h3>
-        <div className="grid grid-cols-2 gap-4 h-full">
+        <div className="flex flex-wrap gap-4">
           {items.map((item, index) => (
             <div
               key={index}
-              className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors"
+              className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors flex-1"
+              // style={{ minWidth: "200px" }}
               onClick={() => handleItemClick(item, "comparison-item")}
             >
               <div className="flex items-center justify-between mb-2">
@@ -903,7 +947,7 @@ const MatrixDisplay: React.FC<
           ];
     console.log("tableData", tableData);
     return (
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden h-full flex flex-col">
+      <div className="bg-white rounded-lg overflow-hidden h-full flex flex-col">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-900 flex items-center">
             <List className="w-5 h-5 mr-2" />
@@ -1015,7 +1059,10 @@ const MatrixDisplay: React.FC<
 
   return (
     <div
-      className={`relative h-full ${isDragging ? "opacity-50" : ""}`}
+      ref={contentRef}
+      className={`relative ${
+        viewType === "chart" || viewType === "pie-chart" ? "h-full" : ""
+      } ${isDragging ? "opacity-50" : ""}`}
       style={customStyles}
     >
       {/* Widget Header with Controls */}
@@ -1061,7 +1108,7 @@ const MatrixDisplay: React.FC<
           <>
             <button
               onClick={() => onEdit?.(widget.id)}
-              className="p-1 bg-white rounded shadow-md hover:bg-gray-50 transition-colors"
+              className="p-1 bg-white rounded shadow-md hover:bg-gray-50 transition-colors "
               title="Edit Widget"
             >
               <Edit className="w-4 h-4 text-gray-600" />

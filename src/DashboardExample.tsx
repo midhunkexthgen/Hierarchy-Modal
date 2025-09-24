@@ -149,6 +149,7 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
             { label: "UK", value: "UK" },
             { label: "Germany", value: "Germany" },
             { label: "France", value: "France" },
+            { label: "Spain", value: "Spain" },
           ],
         },
         {
@@ -255,7 +256,10 @@ const JsonDrivenDashboard: React.FC = () => {
     }
   };
 
-  const onLayoutChange = (layout: ReactGridLayout.Layout[]): void => {
+  const onLayoutChange = (
+    layout: ReactGridLayout.Layout[],
+    layouts: { [key: string]: ReactGridLayout.Layout[] }
+  ): void => {
     const updatedWidgets = currentDashboard.widgets.map((widget) => {
       const layoutItem = layout.find((item) => item.i === widget.id);
       if (layoutItem) {
@@ -279,13 +283,51 @@ const JsonDrivenDashboard: React.FC = () => {
     });
   };
 
+  const handleHeightChange = (
+    widgetId: string,
+    height: number,
+    element: HTMLElement
+  ) => {
+    const rowHeight = 100; // Match the rowHeight prop in ResponsiveGridLayout
+    const marginY = 16; // Match the margin prop in ResponsiveGridLayout
+
+    // Calculate grid units from pixel height
+    const newH = Math.ceil(height / (rowHeight + marginY));
+
+    const widget = currentDashboard.widgets.find((w) => w.id === widgetId);
+    if (widget && widget.position.height !== newH) {
+      const updatedWidgets = currentDashboard.widgets.map((w) =>
+        w.id === widgetId
+          ? {
+              ...w,
+              position: {
+                ...w.position,
+                height: newH,
+              },
+              customHeight: height,
+            }
+          : w
+      );
+      setCurrentDashboard({ ...currentDashboard, widgets: updatedWidgets });
+    }
+  };
+
   const layout = currentDashboard.widgets.map((w) => ({
     i: w.id,
     x: w.position.col,
     y: w.position.row,
     w: w.position.width,
     h: w.position.height,
+    // customHeight: w.customHeight,
   }));
+
+  const layouts = {
+    lg: layout,
+    md: layout,
+    sm: layout,
+    xs: layout,
+    xxs: layout,
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -294,7 +336,7 @@ const JsonDrivenDashboard: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <Grid className="w-8 h-8" />
-              JSON-Driven Dashboard with Filters
+              Dashboard
             </h1>
             <p className="text-gray-600 mt-1">{currentDashboard.description}</p>
           </div>
@@ -334,16 +376,24 @@ const JsonDrivenDashboard: React.FC = () => {
       <div className="p-6">
         <ResponsiveGridLayout
           className="layout"
-          layouts={{ lg: layout }}
+          // layouts={{ lg: layout }}
+          layouts={layouts}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
           rowHeight={100}
           onLayoutChange={onLayoutChange}
           isDraggable={isEditMode}
           isResizable={isEditMode}
+          margin={[16, 16]}
+          // preventCollision={true}
         >
           {currentDashboard.widgets.map((widget) => (
-            <div key={widget.id} className="bg-white rounded-lg shadow-md">
+            <div
+              key={widget.id}
+              className="bg-white rounded-lg shadow-md border"
+              // style={{ height: `${widget?.customHeight}px !important` }}
+            >
+              {console.log(widget, "oneee")}
               <MatrixDisplay
                 widget={widget}
                 displayType={widget.displayType}
@@ -363,6 +413,7 @@ const JsonDrivenDashboard: React.FC = () => {
                 onFiltersChange={(filters) =>
                   handleWidgetFiltersChange(widget.id, filters)
                 }
+                onHeightChange={handleHeightChange}
               />
             </div>
           ))}
@@ -379,7 +430,7 @@ const JsonDrivenDashboard: React.FC = () => {
         onSave={handleSaveWidget}
       />
 
-      {isEditMode && (
+      {/* {isEditMode && (
         <div className="fixed bottom-4 right-4 bg-blue-600 text-white p-4 rounded-lg shadow-lg max-w-sm">
           <h4 className="font-semibold mb-2">Edit Mode Active</h4>
           <ul className="text-sm space-y-1">
@@ -389,7 +440,7 @@ const JsonDrivenDashboard: React.FC = () => {
             <li>• Remove widgets by clicking the trash icon.</li>
           </ul>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

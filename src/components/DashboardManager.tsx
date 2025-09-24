@@ -7,12 +7,7 @@ const DashboardManager: React.FC<{
   currentDashboard: DashboardLayout;
   onDashboardChange: (dashboard: DashboardLayout) => void;
   onLoadDashboard: (config: string) => void;
-}> = ({
-  dashboards,
-  currentDashboard,
-  onDashboardChange,
-  onLoadDashboard,
-}) => {
+}> = ({ dashboards, currentDashboard, onDashboardChange, onLoadDashboard }) => {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [configText, setConfigText] = useState("");
 
