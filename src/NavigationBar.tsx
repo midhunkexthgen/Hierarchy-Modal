@@ -68,7 +68,7 @@ interface DimensionProps {
   data?: DimensionItem[];
 }
 
-// Date Range Filter Component
+// Improved Date Range Filter Component
 const DateRangeFilter: React.FC<{
   onDateChange: (startDate: string, endDate: string) => void;
   startDate?: string;
@@ -88,42 +88,42 @@ const DateRangeFilter: React.FC<{
   };
 
   return (
-    <div className="flex items-center space-x-2 bg-white rounded-lg border border-gray-200 p-2">
-      <Calendar className="w-4 h-4 text-gray-500" />
+    <div className="flex items-center space-x-2 bg-slate-100 rounded-md p-2">
+      <Calendar className="w-4 h-4 text-slate-500" />
       <input
         type="date"
         value={localStartDate}
         onChange={(e) => handleStartDateChange(e.target.value)}
-        className="text-xs border-none focus:ring-0 focus:outline-none"
+        className="text-sm bg-transparent border-none focus:ring-0 focus:outline-none w-32"
         placeholder="Start Date"
       />
-      <span className="text-gray-400">-</span>
+      <span className="text-slate-400">-</span>
       <input
         type="date"
         value={localEndDate}
         onChange={(e) => handleEndDateChange(e.target.value)}
-        className="text-xs border-none focus:ring-0 focus:outline-none"
+        className="text-sm bg-transparent border-none focus:ring-0 focus:outline-none w-32"
         placeholder="End Date"
       />
     </div>
   );
 };
 
-// Generic Filter Component
+// Improved Generic Filter Component
 const GenericFilter: React.FC<{
   modifier: Modifier;
   onFilterChange: (value: string) => void;
   value?: string;
 }> = ({ modifier, onFilterChange, value = "" }) => {
   return (
-    <div className="flex items-center space-x-2 bg-white rounded-lg border border-gray-200 p-2">
-      <Filter className="w-4 h-4 text-gray-500" />
+    <div className="flex items-center space-x-2 bg-slate-100 rounded-md p-2">
+      <Filter className="w-4 h-4 text-slate-500" />
       <input
         type="text"
         value={value}
         onChange={(e) => onFilterChange(e.target.value)}
         placeholder={modifier.displayText}
-        className="text-xs border-none focus:ring-0 focus:outline-none w-24"
+        className="text-sm bg-transparent border-none focus:ring-0 focus:outline-none w-36"
       />
     </div>
   );
@@ -616,30 +616,23 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
   ];
 
   const data = propData || defaultData;
-  // State to manage the navigation path and selected items at each level
   const [navigationPath, setNavigationPath] = useState<DimensionItem[]>([]);
-
   const [selectedItems, setSelectedItems] = useState<SelectedItems>({});
   const [modifierValues, setModifierValues] = useState<ModifierValues>({});
 
-  // Update navigation path in Redux when it changes
   useEffect(() => {
     const pathKey = generateNavigationPathKey(navigationPath, modifierValues);
     dispatch(setCurrentNavigationPath(pathKey));
   }, [navigationPath, modifierValues, dispatch]);
-  // const navigationPath = useSelector(
-  //   (state: RootState) => state.navigationPath?.navigationPath || []
-  // );
-  // Function to get appropriate icon based on icon name or level
+
   const getIcon = (level: number, iconName?: string): React.ReactNode => {
-    // If iconName is provided, use specific icons
     if (iconName) {
       const iconMap: { [key: string]: React.ReactNode } = {
         // Brand icons
-        apple: <Zap className="w-5 h-5" />,
-        microsoft: <Zap className="w-5 h-5" />,
-        amazon: <Zap className="w-5 h-5" />,
-        google: <Zap className="w-5 h-5" />,
+        apple: <Zap className="w-5 h-5 text-yellow-400" />,
+        microsoft: <Zap className="w-5 h-5 text-blue-400" />,
+        amazon: <Zap className="w-5 h-5 text-orange-400" />,
+        google: <Zap className="w-5 h-5 text-red-400" />,
 
         // Country/Flag icons (using Flag as generic)
         "flag-us": <Flag className="w-5 h-5" />,
@@ -697,7 +690,6 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
     }
   };
 
-  // Handle item selection at any level
   const handleItemSelect = (item: DimensionItem, level: number): void => {
     const newPath = navigationPath.slice(0, level + 1);
     newPath[level] = item;
@@ -724,7 +716,6 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
     dispatch(setCurrentNavigationPath(pathKey));
   };
 
-  // Handle modifier value changes
   const handleModifierChange = (
     level: number,
     modifierCode: string,
@@ -739,7 +730,6 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
     }));
   };
 
-  // Clear modifier value
   const clearModifier = (level: number, modifierCode: string): void => {
     setModifierValues((prev) => {
       const newValues = { ...prev };
@@ -753,7 +743,6 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
     });
   };
 
-  // Render modifier component based on code
   const renderModifier = (
     modifier: Modifier,
     level: number
@@ -768,8 +757,22 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
             onDateChange={(startDate, endDate) =>
               handleModifierChange(level, modifier.code, { startDate, endDate })
             }
-            startDate={currentValue?.startDate || ""}
-            endDate={currentValue?.endDate || ""}
+            startDate={
+              (
+                currentValue as {
+                  startDate: string;
+                  endDate: string;
+                }
+              )?.startDate || ""
+            }
+            endDate={
+              (
+                currentValue as {
+                  startDate: string;
+                  endDate: string;
+                }
+              )?.endDate || ""
+            }
           />
         );
       default:
@@ -780,13 +783,12 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
             onFilterChange={(value) =>
               handleModifierChange(level, modifier.code, value)
             }
-            value={currentValue || ""}
+            value={(currentValue as string) || ""}
           />
         );
     }
   };
 
-  // Get items to display at a specific level
   const getItemsForLevel = (level: number): DimensionItem[] => {
     if (level === 0) {
       return data;
@@ -796,7 +798,6 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
     return parentItem?.children || [];
   };
 
-  // Get current selected item for a level
   const getCurrentItem = (level: number): DimensionItem | null => {
     if (level === 0) {
       return data.find((item) => item.code === selectedItems[level]) || null;
@@ -806,7 +807,6 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
     return items.find((item) => item.code === selectedItems[level]) || null;
   };
 
-  // Render a navigation bar for a specific level
   const renderNavigationBar = (level: number): React.ReactNode => {
     const items = getItemsForLevel(level);
     const currentItem = getCurrentItem(level);
@@ -816,10 +816,12 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
     const isTopLevel = level === 0;
 
     return (
-      <div key={level} className="w-full border-b">
-        {/* Main navigation row */}
-        <div className={`w-full ${isTopLevel ? "bg-blue-600" : "bg-gray-100"}`}>
-          <div className="flex items-center overflow-x-auto">
+      <div key={level} className="w-full border-b border-slate-200">
+        <div
+          className={`w-full ${isTopLevel ? "bg-[#f0f8ff]" : "bg-slate-50"}`}
+          // className={`w-full ${isTopLevel ? "bg-[#f0f8ff]" : "bg-slate-50"}`}
+        >
+          <div className="flex items-center overflow-x-auto p-2 space-x-2">
             {items.map((item: DimensionItem) => {
               const isSelected = selectedItems[level] === item.code;
 
@@ -828,22 +830,20 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
                   key={item.code}
                   onClick={() => handleItemSelect(item, level)}
                   className={`
-                    flex items-center space-x-2 px-4 py-3 whitespace-nowrap transition-colors
+                    flex items-center space-x-2 px-4 py-2 whitespace-nowrap transition-all duration-200 rounded-md
                     ${
-                      isTopLevel
-                        ? isSelected
-                          ? "bg-blue-700 text-white"
-                          : "text-blue-100 hover:bg-blue-500 hover:text-white"
-                        : isSelected
-                        ? "bg-blue-500 text-white"
-                        : "text-gray-700 hover:bg-gray-200"
+                      isSelected
+                        ? "bg-blue-500 text-white shadow-md"
+                        : `text-slate-700 hover:bg-slate-200 ${
+                            isTopLevel ? "font-semibold" : ""
+                          }`
                     }
                   `}
                 >
                   {getIcon(level, item.icon)}
-                  <span className="text-sm font-medium">{item.name}</span>
+                  <span className="text-sm">{item.name}</span>
                   {item.children && item.children.length > 0 && (
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-4 h-4 opacity-50" />
                   )}
                 </button>
               );
@@ -851,28 +851,27 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
           </div>
         </div>
 
-        {/* Modifiers row */}
         {currentItem &&
           currentItem.modifiers &&
           currentItem.modifiers.length > 0 && (
-            <div className="bg-gray-50 px-4 py-2 border-t border-gray-200">
-              <div className="flex items-center space-x-3 overflow-x-auto">
-                <span className="text-xs font-medium text-gray-600 whitespace-nowrap">
+            <div className="bg-white px-4 py-3 border-t border-slate-200">
+              <div className="flex items-center space-x-4 overflow-x-auto">
+                <span className="text-sm font-medium text-slate-600 whitespace-nowrap">
                   Filters:
                 </span>
                 {currentItem.modifiers.map((modifier) => (
                   <div
                     key={modifier.code}
-                    className="flex items-center space-x-1"
+                    className="flex items-center space-x-1.5"
                   >
                     {renderModifier(modifier, level)}
                     {modifierValues[level]?.[modifier.code] && (
                       <button
                         onClick={() => clearModifier(level, modifier.code)}
-                        className="text-gray-400 hover:text-gray-600 p-1"
+                        className="text-slate-400 hover:text-red-500 p-1 rounded-full hover:bg-red-100 transition-colors"
                         title="Clear filter"
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
@@ -884,52 +883,41 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
     );
   };
 
-  // Determine how many levels to render
-  const maxLevel = Math.min(navigationPath.length + 1, 5); // Limit to 5 levels for practical reasons
+  const maxLevel = Math.min(navigationPath.length + 1, 5);
 
   return (
-    <div className="w-full bg-white shadow-lg rounded-lg overflow-hidden">
+    <div className="w-full bg-slate-50 shadow-lg rounded-xl overflow-hidden border border-slate-200 font-sans">
       <div className="flex flex-col">
         {Array.from({ length: maxLevel }, (_, index) =>
           renderNavigationBar(index)
         )}
       </div>
 
-      {/* Display current selection path */}
       {navigationPath.length > 0 && (
-        <div className="p-4 bg-gray-50 border-t">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">
-            Current Selection:
+        <div className="p-4 bg-white border-t border-slate-200">
+          <h3 className="text-sm font-semibold text-slate-800 mb-3">
+            Current Selection
           </h3>
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
+          <div className="flex items-center flex-wrap gap-2 text-sm text-slate-700">
             {navigationPath.map((item: DimensionItem, index: number) => (
-              <div key={item.code} className="flex items-center">
+              <React.Fragment key={item.code}>
                 {index > 0 && (
-                  <ChevronRight className="w-4 h-4 mx-1 text-gray-400" />
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
                 )}
-                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                  {item.name}
-                </span>
-              </div>
+                <div className="flex items-center space-x-2 bg-slate-100 text-slate-800 px-3 py-1.5 rounded-md">
+                  {getIcon(index, item.icon)}
+                  <span>{item.name}</span>
+                </div>
+              </React.Fragment>
             ))}
           </div>
-          <div className="mt-2 text-xs text-gray-500">
-            Navigation codes: {Object.values(selectedItems).join(" → ")}
-          </div>
-          <div className="mt-1 text-xs text-gray-500">
-            Full path key:{" "}
-            <code className="bg-gray-100 px-1 rounded">
-              {generateNavigationPathKey(navigationPath, modifierValues)}
-            </code>
-          </div>
 
-          {/* Display active modifiers */}
           {Object.keys(modifierValues).length > 0 && (
-            <div className="mt-3">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">
-                Active Filters:
+            <div className="mt-4">
+              <h4 className="text-sm font-semibold text-slate-800 mb-3">
+                Active Filters
               </h4>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {Object.entries(modifierValues).map(
                   ([levelStr, levelModifiers]) => {
                     const level = parseInt(levelStr);
@@ -938,57 +926,59 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
                         ? navigationPath[level]
                         : null;
 
+                    if (!levelItem) return null;
+
                     return (
-                      <div key={level} className="text-xs">
-                        <span className="font-medium text-gray-600">
-                          {levelItem ? levelItem.name : `Level ${level}`}:
-                        </span>
-                        <div className="ml-2 mt-1 space-y-1">
+                      <div
+                        key={level}
+                        className="text-sm p-3 bg-slate-50 rounded-lg"
+                      >
+                        <div className="font-medium text-slate-700 mb-2">
+                          {levelItem.name}
+                        </div>
+                        <div className="ml-2 space-y-2">
                           {Object.entries(levelModifiers).map(
                             ([modifierCode, value]) => (
                               <div
                                 key={modifierCode}
-                                className="flex items-center space-x-2"
+                                className="flex items-center justify-between"
                               >
-                                <span className="text-gray-500">
-                                  {modifierCode}:
+                                <span className="text-slate-500 text-xs uppercase font-semibold">
+                                  {modifierCode.replace(/_/g, " ")}:
                                 </span>
-                                <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs">
-                                  {value &&
-                                  typeof value === "object" &&
-                                  "startDate" in value &&
-                                  "endDate" in value
-                                    ? `${
-                                        (
-                                          value as {
-                                            startDate: string;
-                                            endDate: string;
-                                          }
-                                        ).startDate
-                                      } to ${
-                                        (
-                                          value as {
-                                            startDate: string;
-                                            endDate: string;
-                                          }
-                                        ).endDate
-                                      }`
-                                    : value && typeof value === "object"
-                                    ? JSON.stringify(value)
-                                    : typeof value === "string" ||
-                                      typeof value === "number"
-                                    ? value
-                                    : ""}
-                                </span>
-                                <button
-                                  onClick={() =>
-                                    clearModifier(level, modifierCode)
-                                  }
-                                  className="text-gray-400 hover:text-red-500"
-                                  title="Remove filter"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
+                                <div className="flex items-center space-x-2">
+                                  <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-medium">
+                                    {value &&
+                                    typeof value === "object" &&
+                                    "startDate" in value &&
+                                    "endDate" in value
+                                      ? `${
+                                          (
+                                            value as {
+                                              startDate: string;
+                                              endDate: string;
+                                            }
+                                          ).startDate
+                                        } to ${
+                                          (
+                                            value as {
+                                              startDate: string;
+                                              endDate: string;
+                                            }
+                                          ).endDate
+                                        }`
+                                      : JSON.stringify(value)}
+                                  </span>
+                                  <button
+                                    onClick={() =>
+                                      clearModifier(level, modifierCode)
+                                    }
+                                    className="text-slate-400 hover:text-red-500"
+                                    title="Remove filter"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
                               </div>
                             )
                           )}
@@ -1000,6 +990,12 @@ const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
               </div>
             </div>
           )}
+          <div className="mt-4 text-xs text-slate-400">
+            <span className="font-semibold">Path Key:</span>{" "}
+            <code className="bg-slate-100 text-slate-600 px-1.5 py-1 rounded">
+              {generateNavigationPathKey(navigationPath, modifierValues)}
+            </code>
+          </div>
         </div>
       )}
     </div>

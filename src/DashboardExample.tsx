@@ -36,6 +36,7 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
       displayType: "summary",
       viewType: "single-value",
       position: { row: 0, col: 0, width: 3, height: 2 },
+      apiEndpoint: "/api/summary",
       filters: [
         {
           id: "revenue-date-range",
@@ -69,6 +70,7 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
       viewType: "comparison",
       position: { row: 0, col: 3, width: 3, height: 4 },
       additionalInfo: { outcome: true },
+      apiEndpoint: "/api/distribution",
       filters: [
         {
           id: "region-filter",
@@ -133,6 +135,7 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
       displayType: "summary",
       viewType: "pie-chart",
       position: { row: 0, col: 6, width: 3, height: 4 },
+      apiEndpoint: "/api/performance",
       filters: [
         {
           id: "category-date",
@@ -158,6 +161,7 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
       displayType: "summary",
       viewType: "chart",
       position: { row: 0, col: 9, width: 3, height: 4 },
+      apiEndpoint: "/api/comparison",
       filters: [
         {
           id: "revenue-range",
@@ -188,6 +192,7 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
       viewType: "comparison",
       position: { row: 2, col: 0, width: 6, height: 2 },
       additionalInfo: { outcome: true },
+      apiEndpoint: "/api/regions",
       filters: [
         {
           id: "search-filter",
@@ -237,6 +242,7 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
       viewType: "tabular",
       position: { row: 4, col: 0, width: 12, height: 4 },
       additionalInfo: { outcome: true },
+      apiEndpoint: "/api/metrics",
       filters: [
         {
           id: "revenue-date-range",
@@ -310,6 +316,164 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
           ],
         },
       ],
+    },
+  ],
+};
+
+const SAMPLE_DATA: MatrixData = {
+  summary: {
+    totalRevenue: 2450000,
+    totalOrders: 15234,
+    avgOrderValue: 160.85,
+    growthRate: 12.5,
+    regions: [
+      {
+        name: "UK",
+        value: 45,
+        revenue: 1102500,
+        orders: 6855,
+        outcome: "positive",
+        date: "2024-01-15",
+      },
+      {
+        name: "Germany",
+        value: 25,
+        revenue: 612500,
+        orders: 3809,
+        outcome: "positive",
+        date: "2024-01-16",
+      },
+      {
+        name: "France",
+        value: 20,
+        revenue: 490000,
+        orders: 3047,
+        outcome: "negative",
+        date: "2024-01-17",
+      },
+      {
+        name: "Spain",
+        value: 10,
+        revenue: 245000,
+        orders: 1523,
+        outcome: "positive",
+        date: "2024-01-18",
+      },
+    ],
+    categories: [
+      {
+        name: "Electronics",
+        value: 850000,
+        revenue: 850000,
+        orders: 5300,
+        percentage: 34.7,
+        outcome: "positive",
+        date: "2024-01-15",
+      },
+      {
+        name: "Fashion",
+        value: 735000,
+        revenue: 735000,
+        orders: 4590,
+        percentage: 30.0,
+        outcome: "positive",
+        date: "2024-01-16",
+      },
+      {
+        name: "Home & Garden",
+        value: 490000,
+        revenue: 490000,
+        orders: 3060,
+        percentage: 20.0,
+        outcome: "negative",
+        date: "2024-01-17",
+      },
+      {
+        name: "Books",
+        value: 245000,
+        revenue: 245000,
+        orders: 1530,
+        percentage: 10.0,
+        outcome: "positive",
+        date: "2024-01-18",
+      },
+      {
+        name: "Sports",
+        value: 130000,
+        revenue: 130000,
+        orders: 812,
+        percentage: 5.3,
+        outcome: "negative",
+        date: "2024-01-19",
+      },
+    ],
+  },
+  details: [
+    {
+      id: 1,
+      region: "UK",
+      category: "Electronics",
+      revenue: 450000,
+      orders: 2800,
+      avgOrder: 160.71,
+      growth: 15.2,
+      outcome: "positive",
+      date: "2024-01-15",
+    },
+    {
+      id: 2,
+      region: "UK",
+      category: "Fashion",
+      revenue: 380000,
+      orders: 2375,
+      avgOrder: 160.0,
+      growth: 8.5,
+      outcome: "positive",
+      date: "2024-01-16",
+    },
+    {
+      id: 3,
+      region: "Germany",
+      category: "Electronics",
+      revenue: 280000,
+      orders: 1750,
+      avgOrder: 160.0,
+      growth: 12.3,
+      outcome: "positive",
+      date: "2024-01-17",
+    },
+    {
+      id: 4,
+      region: "Germany",
+      category: "Fashion",
+      revenue: 220000,
+      orders: 1375,
+      avgOrder: 160.0,
+      growth: -2.1,
+      outcome: "negative",
+      date: "2024-01-18",
+    },
+    {
+      id: 5,
+      region: "France",
+      category: "Electronics",
+      revenue: 180000,
+      orders: 1125,
+      avgOrder: 160.0,
+      growth: -5.5,
+      outcome: "negative",
+      date: "2024-01-19",
+    },
+    {
+      id: 6,
+      region: "France",
+      category: "Fashion",
+      revenue: 160000,
+      orders: 1000,
+      avgOrder: 160.0,
+      growth: 3.2,
+      outcome: "positive",
+      date: "2024-01-20",
     },
   ],
 };
@@ -733,7 +897,6 @@ const JsonDrivenDashboard: React.FC = () => {
               className="bg-white rounded-lg shadow-md border"
               // style={{ height: `${widget?.customHeight}px !important` }}
             >
-              {console.log(widget, "oneee")}
               <MatrixDisplay
                 widget={widget}
                 displayType={widget.displayType}
@@ -755,6 +918,7 @@ const JsonDrivenDashboard: React.FC = () => {
                   handleWidgetFiltersChange(widget.id, filters)
                 }
                 onHeightChange={handleHeightChange}
+                sampleData={SAMPLE_DATA}
               />
             </div>
           ))}

@@ -41,163 +41,8 @@ import * as am5xy from "@amcharts/amcharts5/xy";
 import * as am5percent from "@amcharts/amcharts5/percent";
 import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 
-const SAMPLE_DATA: MatrixData = {
-  summary: {
-    totalRevenue: 2450000,
-    totalOrders: 15234,
-    avgOrderValue: 160.85,
-    growthRate: 12.5,
-    regions: [
-      {
-        name: "UK",
-        value: 45,
-        revenue: 1102500,
-        orders: 6855,
-        outcome: "positive",
-        date: "2024-01-15",
-      },
-      {
-        name: "Germany",
-        value: 25,
-        revenue: 612500,
-        orders: 3809,
-        outcome: "positive",
-        date: "2024-01-16",
-      },
-      {
-        name: "France",
-        value: 20,
-        revenue: 490000,
-        orders: 3047,
-        outcome: "negative",
-        date: "2024-01-17",
-      },
-      {
-        name: "Spain",
-        value: 10,
-        revenue: 245000,
-        orders: 1523,
-        outcome: "positive",
-        date: "2024-01-18",
-      },
-    ],
-    categories: [
-      {
-        name: "Electronics",
-        value: 850000,
-        revenue: 850000,
-        orders: 5300,
-        percentage: 34.7,
-        outcome: "positive",
-        date: "2024-01-15",
-      },
-      {
-        name: "Fashion",
-        value: 735000,
-        revenue: 735000,
-        orders: 4590,
-        percentage: 30.0,
-        outcome: "positive",
-        date: "2024-01-16",
-      },
-      {
-        name: "Home & Garden",
-        value: 490000,
-        revenue: 490000,
-        orders: 3060,
-        percentage: 20.0,
-        outcome: "negative",
-        date: "2024-01-17",
-      },
-      {
-        name: "Books",
-        value: 245000,
-        revenue: 245000,
-        orders: 1530,
-        percentage: 10.0,
-        outcome: "positive",
-        date: "2024-01-18",
-      },
-      {
-        name: "Sports",
-        value: 130000,
-        revenue: 130000,
-        orders: 812,
-        percentage: 5.3,
-        outcome: "negative",
-        date: "2024-01-19",
-      },
-    ],
-  },
-  details: [
-    {
-      id: 1,
-      region: "UK",
-      category: "Electronics",
-      revenue: 450000,
-      orders: 2800,
-      avgOrder: 160.71,
-      growth: 15.2,
-      outcome: "positive",
-      date: "2024-01-15",
-    },
-    {
-      id: 2,
-      region: "UK",
-      category: "Fashion",
-      revenue: 380000,
-      orders: 2375,
-      avgOrder: 160.0,
-      growth: 8.5,
-      outcome: "positive",
-      date: "2024-01-16",
-    },
-    {
-      id: 3,
-      region: "Germany",
-      category: "Electronics",
-      revenue: 280000,
-      orders: 1750,
-      avgOrder: 160.0,
-      growth: 12.3,
-      outcome: "positive",
-      date: "2024-01-17",
-    },
-    {
-      id: 4,
-      region: "Germany",
-      category: "Fashion",
-      revenue: 220000,
-      orders: 1375,
-      avgOrder: 160.0,
-      growth: -2.1,
-      outcome: "negative",
-      date: "2024-01-18",
-    },
-    {
-      id: 5,
-      region: "France",
-      category: "Electronics",
-      revenue: 180000,
-      orders: 1125,
-      avgOrder: 160.0,
-      growth: -5.5,
-      outcome: "negative",
-      date: "2024-01-19",
-    },
-    {
-      id: 6,
-      region: "France",
-      category: "Fashion",
-      revenue: 160000,
-      orders: 1000,
-      avgOrder: 160.0,
-      growth: 3.2,
-      outcome: "positive",
-      date: "2024-01-20",
-    },
-  ],
-};
+const baseUrl = "https://01a9b102-272b-4a62-9992-55f628a4b9a3.mock.pstmn.io";
+// const baseUrl = "http://localhost:4000";
 
 const MatrixDisplay: React.FC<
   MatrixDisplayProps & {
@@ -225,8 +70,9 @@ const MatrixDisplay: React.FC<
   filters = [],
   inVisibleFilters = [],
   onFiltersChange = () => {},
+  sampleData,
 }) => {
-  const [data, setData] = useState<MatrixData>(SAMPLE_DATA);
+  const [data, setData] = useState<MatrixData>(sampleData);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState<boolean>(false);
@@ -375,42 +221,54 @@ const MatrixDisplay: React.FC<
 
     try {
       // Build query parameters from applied filters
-      const params = new URLSearchParams();
-      localAppliedFilters.forEach((filter) => {
-        const filterConfig = filters.find((f) => f.id === filter.filterId);
-        if (filterConfig && filter.value) {
-          if (filterConfig.type === "date-range") {
-            params.append(`${filterConfig.field}_start`, filter.value.start);
-            params.append(`${filterConfig.field}_end`, filter.value.end);
-          } else if (filterConfig.type === "number-range") {
-            if (filter.value.min !== undefined)
-              params.append(`${filterConfig.field}_min`, filter.value.min);
-            if (filter.value.max !== undefined)
-              params.append(`${filterConfig.field}_max`, filter.value.max);
-          } else if (filterConfig.type === "multi-select") {
-            (filter.value as (string | number)[]).forEach((val) =>
-              params.append(filterConfig.field, String(val))
-            );
-          } else {
-            params.append(filterConfig.field, String(filter.value));
-          }
-        }
-      });
+      // const params = new URLSearchParams();
+      // localAppliedFilters.forEach((filter) => {
+      //   const filterConfig = filters.find((f) => f.id === filter.filterId);
+      //   if (filterConfig && filter.value) {
+      //     if (filterConfig.type === "date-range") {
+      //       params.append(`${filterConfig.field}_start`, filter.value.start);
+      //       params.append(`${filterConfig.field}_end`, filter.value.end);
+      //     } else if (filterConfig.type === "number-range") {
+      //       if (filter.value.min !== undefined)
+      //         params.append(`${filterConfig.field}_min`, filter.value.min);
+      //       if (filter.value.max !== undefined)
+      //         params.append(`${filterConfig.field}_max`, filter.value.max);
+      //     } else if (filterConfig.type === "multi-select") {
+      //       (filter.value as (string | number)[]).forEach((val) =>
+      //         params.append(filterConfig.field, String(val))
+      //       );
+      //     } else {
+      //       params.append(filterConfig.field, String(filter.value));
+      //     }
+      //   }
+      // });
 
-      const url = `${apiEndpoint}${
-        params.toString() ? "?" + params.toString() : ""
-      }`;
+      // const url = `${apiEndpoint}${
+      //   params.toString() ? "?" + params.toString() : ""
+      // }`;
+      const url = `${baseUrl}${apiEndpoint}`;
       const response = await fetch(url);
       if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
       const result: MatrixData = await response.json();
       setData(result);
     } catch (err) {
+      setData(sampleData);
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
   }, [apiEndpoint, localAppliedFilters, filters]);
+
+  // Fetch data on mount, when endpoint or filters change, and at specified intervals
+  useEffect(() => {
+    fetchData();
+
+    if (refreshInterval) {
+      const intervalId = setInterval(fetchData, refreshInterval);
+      return () => clearInterval(intervalId);
+    }
+  }, [fetchData, refreshInterval]);
 
   useLayoutEffect(() => {
     const element = contentRef.current;
