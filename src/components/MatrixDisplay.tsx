@@ -41,8 +41,8 @@ import * as am5xy from "@amcharts/amcharts5/xy";
 import * as am5percent from "@amcharts/amcharts5/percent";
 import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 
-const baseUrl = "https://01a9b102-272b-4a62-9992-55f628a4b9a3.mock.pstmn.io";
-// const baseUrl = "http://localhost:4000";
+// const baseUrl = "https://01a9b102-272b-4a62-9992-55f628a4b9a3.mock.pstmn.io";
+const baseUrl = "https://node-server-jcf5.onrender.com";
 
 const MatrixDisplay: React.FC<
   MatrixDisplayProps & {
