@@ -33,7 +33,8 @@ import type {
 import FilterPanel from "./FilterPanel";
 import { useDispatch, useSelector } from "react-redux";
 import { setLocalAppliedFilters } from "../redux/filtersSlice";
-import { RootState } from "../redux/store";
+import { type RootState } from "../redux/store";
+import { useIndexedDB } from "../helper/useIndexedDB";
 
 // amCharts 5 imports
 import * as am5 from "@amcharts/amcharts5";
@@ -52,6 +53,8 @@ const MatrixDisplay: React.FC<
     onDelete?: (widgetId: string) => void;
     isEditMode?: boolean;
     onHeightChange?: (widgetId: string, height: number) => void;
+    sampleData: MatrixData;
+    inVisibleFilters: FilterConfig[];
   }
 > = ({
   widget,
@@ -80,6 +83,7 @@ const MatrixDisplay: React.FC<
   const localAppliedFilters = useSelector(
     (state: RootState) => state.filters.localAppliedFilters
   );
+  const { saveData, getData } = useIndexedDB();
   // const localAppliedFiltersOne = useSelector(
   //   (state: RootState) => state.filters
   // );
@@ -118,11 +122,20 @@ const MatrixDisplay: React.FC<
 
             switch (filter.type) {
               case "date-range": {
-                if (!fieldValue || !filterValue.start || !filterValue.end)
+                if (
+                  typeof filterValue !== "object" ||
+                  filterValue === null ||
+                  Array.isArray(filterValue)
+                )
                   return true;
+                const { start, end } = filterValue as {
+                  start: string;
+                  end: string;
+                };
+                if (!fieldValue || !start || !end) return true;
                 const itemDate = new Date(fieldValue as string);
-                const startDate = new Date(filterValue.start);
-                const endDate = new Date(filterValue.end);
+                const startDate = new Date(start);
+                const endDate = new Date(end);
                 return itemDate >= startDate && itemDate <= endDate;
               }
 
@@ -152,11 +165,21 @@ const MatrixDisplay: React.FC<
                   .includes(String(filterValue).toLowerCase());
 
               case "number-range": {
-                if (!filterValue.min && !filterValue.max) return true;
+                if (
+                  typeof filterValue !== "object" ||
+                  filterValue === null ||
+                  Array.isArray(filterValue)
+                )
+                  return true;
+                const { min, max } = filterValue as {
+                  min: number;
+                  max: number;
+                };
+                if (!min && !max) return true;
                 const numValue = Number(fieldValue);
-                const min = filterValue.min || -Infinity;
-                const max = filterValue.max || Infinity;
-                return numValue >= min && numValue <= max;
+                const minValue = min || -Infinity;
+                const maxValue = max || Infinity;
+                return numValue >= minValue && numValue <= maxValue;
               }
 
               default:
@@ -201,7 +224,7 @@ const MatrixDisplay: React.FC<
         data,
         displayType,
         localAppliedFilters,
-        inVisibleFilters
+        inVisibleFilters || []
       ),
     [
       applyFiltersToData,
@@ -220,41 +243,24 @@ const MatrixDisplay: React.FC<
     setError(null);
 
     try {
-      // Build query parameters from applied filters
-      // const params = new URLSearchParams();
-      // localAppliedFilters.forEach((filter) => {
-      //   const filterConfig = filters.find((f) => f.id === filter.filterId);
-      //   if (filterConfig && filter.value) {
-      //     if (filterConfig.type === "date-range") {
-      //       params.append(`${filterConfig.field}_start`, filter.value.start);
-      //       params.append(`${filterConfig.field}_end`, filter.value.end);
-      //     } else if (filterConfig.type === "number-range") {
-      //       if (filter.value.min !== undefined)
-      //         params.append(`${filterConfig.field}_min`, filter.value.min);
-      //       if (filter.value.max !== undefined)
-      //         params.append(`${filterConfig.field}_max`, filter.value.max);
-      //     } else if (filterConfig.type === "multi-select") {
-      //       (filter.value as (string | number)[]).forEach((val) =>
-      //         params.append(filterConfig.field, String(val))
-      //       );
-      //     } else {
-      //       params.append(filterConfig.field, String(filter.value));
-      //     }
-      //   }
-      // });
-
-      // const url = `${apiEndpoint}${
-      //   params.toString() ? "?" + params.toString() : ""
-      // }`;
+      const cachedData = await getData<MatrixData>(apiEndpoint);
+      if (cachedData) {
+        setData(cachedData);
+      }
       const url = `${baseUrl}${apiEndpoint}`;
       const response = await fetch(url);
-      if (!response.ok)
+      if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const result: MatrixData = await response.json();
       setData(result);
+      await saveData(apiEndpoint, result);
     } catch (err) {
-      setData(sampleData);
-      setError(err instanceof Error ? err.message : "Unknown error");
+      const cachedData = await getData<MatrixData>(apiEndpoint);
+      if (!cachedData) {
+        setData(sampleData);
+        setError(err instanceof Error ? err.message : "Unknown error");
+      }
     } finally {
       setLoading(false);
     }
@@ -275,8 +281,8 @@ const MatrixDisplay: React.FC<
     if (isEditMode || viewType !== "comparison" || !element || !onHeightChange)
       return;
 
-    onHeightChange(widget.id, element.scrollHeight, element);
-  }, []);
+    onHeightChange(widget.id, element.scrollHeight);
+  }, [isEditMode, onHeightChange, viewType, widget.id]);
 
   // Cleanup amCharts on unmount
   useEffect(() => {
@@ -314,304 +320,273 @@ const MatrixDisplay: React.FC<
 
       // Set themes
       root.setThemes([am5themes_Animated.new(root)]);
+
       if (chartType === "pie") {
-        createPieChart(root, chartData);
+        const chart = root.container.children.push(
+          am5percent.PieChart.new(root, {
+            layout: root.verticalLayout,
+            innerRadius: am5.percent(50),
+          })
+        );
+
+        const series = chart.series.push(
+          am5percent.PieSeries.new(root, {
+            valueField: displayType === "summary" ? "value" : "revenue",
+            categoryField: "name",
+            alignLabels: false,
+          })
+        );
+
+        series.labels.template.setAll({
+          textType: "circular",
+          centerX: 0,
+          centerY: 0,
+        });
+
+        // Add click event
+        series.slices.template.events.on("click", (ev) => {
+          const dataContext = ev.target.dataItem?.dataContext as BaseItem;
+          if (dataContext) {
+            handleItemClick(dataContext, "pie-segment");
+          }
+        });
+        const filteredChartData =
+          localAppliedFilters?.find((el) => el.filterId === "region-filter")
+            ?.value || [];
+        series.data.setAll(
+          Array.isArray(filteredChartData) && filteredChartData.length > 0
+            ? chartData.filter((ele) =>
+                filteredChartData.includes(ele.name as string)
+              )
+            : chartData
+        );
+
+        const legend = chart.children.push(
+          am5.Legend.new(root, {
+            centerX: am5.percent(50),
+            x: am5.percent(50),
+            marginTop: 15,
+            marginBottom: 15,
+          })
+        );
+
+        legend.data.setAll(series.dataItems);
       } else if (chartType === "column") {
-        createColumnChart(root, chartData);
+        const chart = root.container.children.push(
+          am5xy.XYChart.new(root, {
+            panX: true,
+            panY: true,
+            wheelX: "panX",
+            wheelY: "zoomX",
+            layout: root.verticalLayout,
+          })
+        );
+
+        const cursor = chart.set("cursor", am5xy.XYCursor.new(root, {}));
+        cursor.lineY.set("visible", false);
+
+        const xRenderer = am5xy.AxisRendererX.new(root, {
+          minGridDistance: 30,
+        });
+        const xAxis = chart.xAxes.push(
+          am5xy.CategoryAxis.new(root, {
+            maxZoomCount: 30,
+            categoryField: "name",
+            renderer: xRenderer,
+            tooltip: am5.Tooltip.new(root, {}),
+          })
+        );
+
+        const yAxis = chart.yAxes.push(
+          am5xy.ValueAxis.new(root, {
+            renderer: am5xy.AxisRendererY.new(root, {
+              strokeDasharray: [1, 3],
+            }),
+          })
+        );
+
+        const series = chart.series.push(
+          am5xy.ColumnSeries.new(root, {
+            name: "Series 1",
+            xAxis: xAxis,
+            yAxis: yAxis,
+            valueYField: displayType === "summary" ? "value" : "revenue",
+            sequencedInterpolation: true,
+            categoryXField: "name",
+            tooltip: am5.Tooltip.new(root, {
+              labelText: "{valueY}",
+            }),
+          })
+        );
+
+        series.columns.template.setAll({
+          cornerRadiusTL: 5,
+          cornerRadiusTR: 5,
+          strokeOpacity: 0,
+        });
+
+        // Add click event
+        series.columns.template.events.on("click", (ev) => {
+          const dataContext = ev.target.dataItem?.dataContext as BaseItem;
+          if (dataContext) {
+            handleItemClick(dataContext, "column");
+          }
+        });
+
+        xAxis.data.setAll(chartData);
+        series.data.setAll(chartData);
+
+        series.appear(1000);
+        chart.appear(1000, 100);
       } else if (chartType === "layered") {
-        createLayeredColumnChart(root, chartData);
+        const chart = root.container.children.push(
+          am5xy.XYChart.new(root, {
+            panX: true,
+            panY: true,
+            wheelX: "panX",
+            wheelY: "zoomX",
+            layout: root.verticalLayout,
+          })
+        );
+
+        const cursor = chart.set("cursor", am5xy.XYCursor.new(root, {}));
+        cursor.lineY.set("visible", false);
+
+        const xRenderer = am5xy.AxisRendererX.new(root, {
+          minGridDistance: 30,
+        });
+        const xAxis = chart.xAxes.push(
+          am5xy.CategoryAxis.new(root, {
+            maxZoomCount: 30,
+            categoryField: "name",
+            renderer: xRenderer,
+            tooltip: am5.Tooltip.new(root, {}),
+          })
+        );
+
+        const yAxis = chart.yAxes.push(
+          am5xy.ValueAxis.new(root, {
+            renderer: am5xy.AxisRendererY.new(root, {
+              strokeDasharray: [1, 3],
+            }),
+          })
+        );
+
+        // Revenue series
+        const revenueSeries = chart.series.push(
+          am5xy.ColumnSeries.new(root, {
+            name: "Revenue",
+            xAxis: xAxis,
+            yAxis: yAxis,
+            valueYField: "revenue",
+            categoryXField: "name",
+            tooltip: am5.Tooltip.new(root, {
+              labelText: "Revenue: ${valueY}",
+            }),
+            fill: am5.color("#3B82F6"),
+          })
+        );
+
+        // Orders series (scaled for visibility)
+        const ordersSeries = chart.series.push(
+          am5xy.ColumnSeries.new(root, {
+            name: "Orders",
+            xAxis: xAxis,
+            yAxis: yAxis,
+            valueYField: "ordersScaled",
+            categoryXField: "name",
+            tooltip: am5.Tooltip.new(root, {
+              labelText: "Orders: {orders}",
+            }),
+            fill: am5.color("#10B981"),
+          })
+        );
+
+        const createRegionFilter = (localAppliedFilters: AppliedFilter[]) => {
+          return (item: SummaryItem | DetailItem) => {
+            if (
+              localAppliedFilters?.find((el) => el.filterId === "region-filter")
+            ) {
+              return localAppliedFilters?.some(
+                (region: AppliedFilter) =>
+                  region.filterId === "region-filter" &&
+                  (region.value as string[]).includes(item?.name as string)
+              );
+            }
+            return true;
+          };
+        };
+        const createCategoryFilter = (localAppliedFilters: AppliedFilter[]) => {
+          return (item: SummaryItem | DetailItem) => {
+            if (
+              localAppliedFilters?.find(
+                (el) => el.filterId === "outcome-filter"
+              )
+            ) {
+              return localAppliedFilters?.some(
+                (region: AppliedFilter) =>
+                  region.filterId === "outcome-filter" &&
+                  (region.value as string[]).includes(item?.outcome as string)
+              );
+            }
+            return true;
+          };
+        };
+        const scaledData = chartData
+          .filter(createRegionFilter(localAppliedFilters))
+          .filter(createCategoryFilter(localAppliedFilters))
+          .map((item) => ({
+            ...item,
+            ordersScaled: (item.orders || 0) * 100, // Scale orders for visibility
+          }));
+
+        revenueSeries.columns.template.setAll({
+          cornerRadiusTL: 5,
+          cornerRadiusTR: 5,
+          strokeOpacity: 0,
+        });
+        ordersSeries.columns.template.setAll({
+          cornerRadiusTL: 5,
+          cornerRadiusTR: 5,
+          strokeOpacity: 0,
+        });
+
+        // Add click events
+        revenueSeries.columns.template.events.on("click", (ev) => {
+          const dataContext = ev.target.dataItem?.dataContext as BaseItem;
+          if (dataContext) {
+            handleItemClick(dataContext, "revenue-column");
+          }
+        });
+
+        ordersSeries.columns.template.events.on("click", (ev) => {
+          const dataContext = ev.target.dataItem?.dataContext as BaseItem;
+          if (dataContext) {
+            handleItemClick(dataContext, "orders-column");
+          }
+        });
+
+        xAxis.data.setAll(scaledData);
+        revenueSeries.data.setAll(scaledData);
+        ordersSeries.data.setAll(scaledData);
+
+        // Add legend
+        const legend = chart.children.push(
+          am5.Legend.new(root, {
+            centerX: am5.percent(50),
+            x: am5.percent(50),
+          })
+        );
+
+        legend.data.setAll(chart.series.values);
+
+        revenueSeries.appear(1000);
+        ordersSeries.appear(1000);
+        chart.appear(1000, 100);
       }
     },
-    [displayType, localAppliedFilters, handleItemClick]
+    [displayType, handleItemClick, localAppliedFilters]
   );
-
-  const createPieChart = (
-    root: am5.Root,
-    chartData: (SummaryItem | DetailItem)[]
-  ): void => {
-    const chart = root.container.children.push(
-      am5percent.PieChart.new(root, {
-        layout: root.verticalLayout,
-        innerRadius: am5.percent(50),
-      })
-    );
-
-    const series = chart.series.push(
-      am5percent.PieSeries.new(root, {
-        valueField: displayType === "summary" ? "value" : "revenue",
-        categoryField: "name",
-        alignLabels: false,
-      })
-    );
-
-    series.labels.template.setAll({
-      textType: "circular",
-      centerX: 0,
-      centerY: 0,
-    });
-
-    // Add click event
-    series.slices.template.events.on("click", (ev) => {
-      const dataContext = ev.target.dataItem?.dataContext as BaseItem;
-      if (dataContext) {
-        handleItemClick(dataContext, "pie-segment");
-      }
-    });
-    const filteredChartData =
-      localAppliedFilters?.find((el) => el.filterId === "region-filter")
-        ?.value || [];
-    series.data.setAll(
-      Array.isArray(filteredChartData) && filteredChartData.length > 0
-        ? chartData.filter((ele) =>
-            filteredChartData.includes(ele.name as string)
-          )
-        : chartData
-    );
-
-    const legend = chart.children.push(
-      am5.Legend.new(root, {
-        centerX: am5.percent(50),
-        x: am5.percent(50),
-        marginTop: 15,
-        marginBottom: 15,
-      })
-    );
-
-    legend.data.setAll(series.dataItems);
-  };
-
-  const createColumnChart = (
-    root: am5.Root,
-    chartData: (SummaryItem | DetailItem)[]
-  ): void => {
-    const chart = root.container.children.push(
-      am5xy.XYChart.new(root, {
-        panX: true,
-        panY: true,
-        wheelX: "panX",
-        wheelY: "zoomX",
-        layout: root.verticalLayout,
-      })
-    );
-
-    const cursor = chart.set("cursor", am5xy.XYCursor.new(root, {}));
-    cursor.lineY.set("visible", false);
-
-    const xRenderer = am5xy.AxisRendererX.new(root, { minGridDistance: 30 });
-    const xAxis = chart.xAxes.push(
-      am5xy.CategoryAxis.new(root, {
-        maxZoomCount: 30,
-        categoryField: "name",
-        renderer: xRenderer,
-        tooltip: am5.Tooltip.new(root, {}),
-      })
-    );
-
-    const yAxis = chart.yAxes.push(
-      am5xy.ValueAxis.new(root, {
-        renderer: am5xy.AxisRendererY.new(root, { strokeDasharray: [1, 3] }),
-      })
-    );
-
-    const series = chart.series.push(
-      am5xy.ColumnSeries.new(root, {
-        name: "Series 1",
-        xAxis: xAxis,
-        yAxis: yAxis,
-        valueYField: displayType === "summary" ? "value" : "revenue",
-        sequencedInterpolation: true,
-        categoryXField: "name",
-        tooltip: am5.Tooltip.new(root, {
-          labelText: "{valueY}",
-        }),
-      })
-    );
-
-    series.columns.template.setAll({
-      cornerRadiusTL: 5,
-      cornerRadiusTR: 5,
-      strokeOpacity: 0,
-    });
-
-    // Add click event
-    series.columns.template.events.on("click", (ev) => {
-      const dataContext = ev.target.dataItem?.dataContext as BaseItem;
-      if (dataContext) {
-        handleItemClick(dataContext, "column");
-      }
-    });
-
-    // const filteredChartData =
-    //   localAppliedFilters?.find((el) => el.filterId === "region-filter")
-    //     ?.value || [];
-    // xAxis.data.setAll(
-    //   Array.isArray(filteredChartData) && filteredChartData.length > 0
-    //     ? chartData.filter((ele) =>
-    //         filteredChartData.includes(ele.name as string)
-    //       )
-    //     : chartData
-    // );
-    // series.data.setAll(
-    //   Array.isArray(filteredChartData) && filteredChartData.length > 0
-    //     ? chartData.filter((ele) =>
-    //         filteredChartData.includes(ele.name as string)
-    //       )
-    //     : chartData
-    // );
-
-    xAxis.data.setAll(chartData);
-    series.data.setAll(chartData);
-
-    series.appear(1000);
-    chart.appear(1000, 100);
-  };
-
-  const createLayeredColumnChart = (
-    root: am5.Root,
-    chartData: (SummaryItem | DetailItem)[]
-  ): void => {
-    const chart = root.container.children.push(
-      am5xy.XYChart.new(root, {
-        panX: true,
-        panY: true,
-        wheelX: "panX",
-        wheelY: "zoomX",
-        layout: root.verticalLayout,
-      })
-    );
-
-    const cursor = chart.set("cursor", am5xy.XYCursor.new(root, {}));
-    cursor.lineY.set("visible", false);
-
-    const xRenderer = am5xy.AxisRendererX.new(root, { minGridDistance: 30 });
-    const xAxis = chart.xAxes.push(
-      am5xy.CategoryAxis.new(root, {
-        maxZoomCount: 30,
-        categoryField: "name",
-        renderer: xRenderer,
-        tooltip: am5.Tooltip.new(root, {}),
-      })
-    );
-
-    const yAxis = chart.yAxes.push(
-      am5xy.ValueAxis.new(root, {
-        renderer: am5xy.AxisRendererY.new(root, { strokeDasharray: [1, 3] }),
-      })
-    );
-
-    // Revenue series
-    const revenueSeries = chart.series.push(
-      am5xy.ColumnSeries.new(root, {
-        name: "Revenue",
-        xAxis: xAxis,
-        yAxis: yAxis,
-        valueYField: "revenue",
-        categoryXField: "name",
-        tooltip: am5.Tooltip.new(root, {
-          labelText: "Revenue: ${valueY}",
-        }),
-        fill: am5.color("#3B82F6"),
-      })
-    );
-
-    // Orders series (scaled for visibility)
-    const ordersSeries = chart.series.push(
-      am5xy.ColumnSeries.new(root, {
-        name: "Orders",
-        xAxis: xAxis,
-        yAxis: yAxis,
-        valueYField: "ordersScaled",
-        categoryXField: "name",
-        tooltip: am5.Tooltip.new(root, {
-          labelText: "Orders: {orders}",
-        }),
-        fill: am5.color("#10B981"),
-      })
-    );
-    // Scale orders data for better visualization
-    // const filteredChartData =
-    //   localAppliedFilters?.find((el) => el.filterId === "region-filter")
-    //     ?.value || [];
-    const createRegionFilter = (localAppliedFilters: any[]) => {
-      return (item: any) => {
-        if (
-          localAppliedFilters?.find((el) => el.filterId === "region-filter")
-        ) {
-          return localAppliedFilters?.some(
-            (region) =>
-              region.filterId === "region-filter" &&
-              region.value?.includes(item?.name)
-          );
-        }
-        return true;
-      };
-    };
-    const createCategoryFilter = (localAppliedFilters: any[]) => {
-      return (item: any) => {
-        if (
-          localAppliedFilters?.find((el) => el.filterId === "outcome-filter")
-        ) {
-          return localAppliedFilters?.some(
-            (region) =>
-              region.filterId === "outcome-filter" &&
-              region.value?.includes(item?.outcome)
-          );
-        }
-        return true;
-      };
-    };
-    const scaledData = chartData
-      .filter(createRegionFilter(localAppliedFilters))
-      .filter(createCategoryFilter(localAppliedFilters))
-      .map((item) => ({
-        ...item,
-        ordersScaled: (item.orders || 0) * 100, // Scale orders for visibility
-      }));
-
-    revenueSeries.columns.template.setAll({
-      cornerRadiusTL: 5,
-      cornerRadiusTR: 5,
-      strokeOpacity: 0,
-    });
-    ordersSeries.columns.template.setAll({
-      cornerRadiusTL: 5,
-      cornerRadiusTR: 5,
-      strokeOpacity: 0,
-    });
-
-    // Add click events
-    revenueSeries.columns.template.events.on("click", (ev) => {
-      const dataContext = ev.target.dataItem?.dataContext as BaseItem;
-      if (dataContext) {
-        handleItemClick(dataContext, "revenue-column");
-      }
-    });
-
-    ordersSeries.columns.template.events.on("click", (ev) => {
-      const dataContext = ev.target.dataItem?.dataContext as BaseItem;
-      if (dataContext) {
-        handleItemClick(dataContext, "orders-column");
-      }
-    });
-
-    xAxis.data.setAll(scaledData);
-    revenueSeries.data.setAll(scaledData);
-    ordersSeries.data.setAll(scaledData);
-
-    // Add legend
-    const legend = chart.children.push(
-      am5.Legend.new(root, {
-        centerX: am5.percent(50),
-        x: am5.percent(50),
-      })
-    );
-
-    legend.data.setAll(chart.series.values);
-
-    revenueSeries.appear(1000);
-    ordersSeries.appear(1000);
-    chart.appear(1000, 100);
-  };
 
   // Update chart when data or view type changes
   useEffect(() => {
@@ -853,19 +828,21 @@ const MatrixDisplay: React.FC<
                       key={column.key}
                       className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
                     >
-                      {column.key === "revenue" || column.key === "value"
-                        ? `${
-                            (row as SummaryItem | DetailItem)[
-                              column.key as keyof typeof row
-                            ]?.toLocaleString() || "N/A"
-                          }`
-                        : column.key === "growth"
-                        ? `${(row as DetailItem)[column.key] > 0 ? "+" : ""}${
-                            (row as DetailItem)[column.key]
-                          }%`
-                        : (row as SummaryItem | DetailItem)[
-                            column.key as keyof typeof row
-                          ] || "N/A"}
+                      {(() => {
+                        const value = (row as SummaryItem | DetailItem)[
+                          column.key as keyof typeof row
+                        ];
+                        if (
+                          column.key === "revenue" ||
+                          column.key === "value"
+                        ) {
+                          return `${((value as number) || 0).toLocaleString()}`;
+                        } else if (column.key === "growth") {
+                          return `${(value as number) > 0 ? "+" : ""}${value}%`;
+                        } else {
+                          return value || "N/A";
+                        }
+                      })()}
                     </td>
                   ))}
                   {additionalInfo.outcome && (
@@ -915,9 +892,21 @@ const MatrixDisplay: React.FC<
 
     // Check if filter has a meaningful value
     if (filterConfig.type === "date-range") {
-      return f.value?.start && f.value?.end;
+      return (
+        typeof f.value === "object" &&
+        f.value !== null &&
+        !Array.isArray(f.value) &&
+        (f.value as { start: string; end: string }).start &&
+        (f.value as { start: string; end: string }).end
+      );
     } else if (filterConfig.type === "number-range") {
-      return f.value?.min !== undefined || f.value?.max !== undefined;
+      return (
+        typeof f.value === "object" &&
+        f.value !== null &&
+        !Array.isArray(f.value) &&
+        ((f.value as { min: number; max: number }).min !== undefined ||
+          (f.value as { min: number; max: number }).max !== undefined)
+      );
     } else if (filterConfig.type === "multi-select") {
       return Array.isArray(f.value) && f.value.length > 0;
     } else {

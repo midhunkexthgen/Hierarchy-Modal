@@ -3,6 +3,22 @@ import { useState, useEffect } from "react";
 import type { FilterConfig, AppliedFilter } from "../DashbiardExampleProps";
 import FilterComponent from "./FilterComponent";
 
+const getDefaultValue = (filter: FilterConfig) => {
+  if (filter.defaultValue !== undefined) {
+    return filter.defaultValue;
+  }
+  switch (filter.type) {
+    case "date-range":
+      return { start: "", end: "" };
+    case "number-range":
+      return { min: 0, max: 0 };
+    case "multi-select":
+      return [];
+    default:
+      return "";
+  }
+};
+
 const FilterPanel: React.FC<{
   filters: FilterConfig[];
   appliedFilters: AppliedFilter[];
@@ -16,7 +32,7 @@ const FilterPanel: React.FC<{
     setLocalFilters(appliedFilters);
   }, [appliedFilters]);
 
-  const handleFilterChange = (filterId: string, value: any) => {
+  const handleFilterChange = (filterId: string, value: AppliedFilter["value"]) => {
     setLocalFilters((prev) => {
       const existing = prev.find((f) => f.filterId === filterId);
       if (existing) {
@@ -35,7 +51,7 @@ const FilterPanel: React.FC<{
   const resetFilters = () => {
     const defaultFilters = filters
       .filter((f) => f.defaultValue !== undefined)
-      .map((f) => ({ filterId: f.id, value: f.defaultValue }));
+      .map((f) => ({ filterId: f.id, value: f.defaultValue! }));
     setLocalFilters(defaultFilters);
   };
 
@@ -60,7 +76,7 @@ const FilterPanel: React.FC<{
             <FilterComponent
               key={filter.id}
               filter={filter}
-              value={appliedFilter?.value || filter.defaultValue}
+              value={appliedFilter?.value || getDefaultValue(filter)}
               onChange={(value) => handleFilterChange(filter.id, value)}
             />
           );

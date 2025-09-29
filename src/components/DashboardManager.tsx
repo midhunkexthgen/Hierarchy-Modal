@@ -3,16 +3,12 @@ import { useState } from "react";
 import type { DashboardLayout } from "../DashbiardExampleProps";
 
 const DashboardManager: React.FC<{
-  dashboards: DashboardLayout[];
   currentDashboard: DashboardLayout;
-  onDashboardChange: (dashboard: DashboardLayout) => void;
   onLoadDashboard: (config: string) => void;
   currentNavigationPath: string;
   onClearLayout: () => void;
 }> = ({
-  dashboards,
   currentDashboard,
-  onDashboardChange,
   onLoadDashboard,
   currentNavigationPath,
   onClearLayout,

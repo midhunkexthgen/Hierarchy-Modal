@@ -37,36 +37,12 @@ import { useDispatch } from "react-redux";
 import { setCurrentNavigationPath } from "./redux/layoutSlice";
 import { generateNavigationPathKey } from "./utils/navigationUtils";
 
-// Type definitions
-interface Modifier {
-  code: string;
-  displayText: string;
-}
-
-interface DimensionItem {
-  code: string;
-  name: string;
-  icon: string;
-  modifiers?: Modifier[];
-  children?: DimensionItem[];
-}
-
-interface SelectedItems {
-  [level: number]: string;
-}
-
-interface ModifierValues {
-  [level: number]: {
-    [modifierCode: string]:
-      | string
-      | number
-      | { startDate: string; endDate: string };
-  };
-}
-
-interface DimensionProps {
-  data?: DimensionItem[];
-}
+import type {
+  DimensionItem,
+  Modifier,
+  ModifierValues,
+  SelectedItems,
+} from "./types";
 
 // Improved Date Range Filter Component
 const DateRangeFilter: React.FC<{
@@ -128,6 +104,10 @@ const GenericFilter: React.FC<{
     </div>
   );
 };
+
+interface DimensionProps {
+  data?: DimensionItem[];
+}
 
 const NavigationBar: React.FC<DimensionProps> = ({ data: propData }) => {
   const dispatch = useDispatch();

@@ -1,6 +1,7 @@
-const DB_NAME = "LayoutDB";
-const STORE_NAME = "Layouts";
-const DB_VERSION = 1;
+const DB_NAME = "GeminiDB";
+const LAYOUT_STORE_NAME = "Layouts";
+const API_DATA_STORE_NAME = "ApiData";
+const DB_VERSION = 2;
 
 export function useIndexedDB() {
   // Open DB
@@ -10,8 +11,11 @@ export function useIndexedDB() {
 
       request.onupgradeneeded = (e: IDBVersionChangeEvent) => {
         const db = (e.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: "id" });
+        if (!db.objectStoreNames.contains(LAYOUT_STORE_NAME)) {
+          db.createObjectStore(LAYOUT_STORE_NAME, { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains(API_DATA_STORE_NAME)) {
+          db.createObjectStore(API_DATA_STORE_NAME, { keyPath: "id" });
         }
       };
 
@@ -23,8 +27,8 @@ export function useIndexedDB() {
   // Save layout by id
   const saveLayout = async (id: string, layout: unknown) => {
     const db = await openDB();
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(LAYOUT_STORE_NAME, "readwrite");
+    const store = tx.objectStore(LAYOUT_STORE_NAME);
     store.put({ id, layout });
     return new Promise<void>((resolve) => {
       tx.oncomplete = () => resolve();
@@ -35,13 +39,37 @@ export function useIndexedDB() {
   const getLayout = async <T = unknown>(id: string): Promise<T | null> => {
     const db = await openDB();
     return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const store = tx.objectStore(STORE_NAME);
+      const tx = db.transaction(LAYOUT_STORE_NAME, "readonly");
+      const store = tx.objectStore(LAYOUT_STORE_NAME);
       const request = store.get(id);
       request.onsuccess = () => resolve(request.result?.layout ?? null);
       request.onerror = () => resolve(null);
     });
   };
 
-  return { saveLayout, getLayout };
+  // Save API data by id
+  const saveData = async (id: string, data: unknown) => {
+    const db = await openDB();
+    const tx = db.transaction(API_DATA_STORE_NAME, "readwrite");
+    const store = tx.objectStore(API_DATA_STORE_NAME);
+    store.put({ id, data });
+    return new Promise<void>((resolve) => {
+      tx.oncomplete = () => resolve();
+    });
+  };
+
+  // Get API data by id
+  const getData = async <T = unknown>(id: string): Promise<T | null> => {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(API_DATA_STORE_NAME, "readonly");
+      const store = tx.objectStore(API_DATA_STORE_NAME);
+      const request = store.get(id);
+      request.onsuccess = () => resolve(request.result?.data ?? null);
+      request.onerror = () => resolve(null);
+    });
+  };
+
+
+  return { saveLayout, getLayout, saveData, getData };
 }

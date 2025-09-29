@@ -1,6 +1,5 @@
-
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { AppliedFilter } from '../DashbiardExampleProps';
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { AppliedFilter } from "../DashbiardExampleProps";
 
 interface FiltersState {
   localAppliedFilters: AppliedFilter[];
@@ -11,7 +10,7 @@ const initialState: FiltersState = {
 };
 
 const filtersSlice = createSlice({
-  name: 'filters',
+  name: "filters",
   initialState,
   reducers: {
     setLocalAppliedFilters: (state, action: PayloadAction<AppliedFilter[]>) => {

@@ -16,15 +16,27 @@ const FilterComponent: React.FC<{
           <div className="flex gap-2">
             <input
               type="date"
-              value={value?.start || ""}
-              onChange={(e) => onChange({ ...value, start: e.target.value })}
+              value={typeof value === 'object' && value !== null && 'start' in value ? (value as { start: string }).start : ''}
+              onChange={(e) => {
+                const newDate = { start: e.target.value, end: '' };
+                if (typeof value === 'object' && value !== null && 'end' in value) {
+                  newDate.end = (value as { end: string }).end;
+                }
+                onChange(newDate);
+              }}
               className="px-2 py-1 border border-gray-300 rounded text-xs"
             />
             <span className="text-xs text-gray-500 self-center">to</span>
             <input
               type="date"
-              value={value?.end || ""}
-              onChange={(e) => onChange({ ...value, end: e.target.value })}
+              value={typeof value === 'object' && value !== null && 'end' in value ? (value as { end: string }).end : ''}
+              onChange={(e) => {
+                const newDate = { start: '', end: e.target.value };
+                if (typeof value === 'object' && value !== null && 'start' in value) {
+                  newDate.start = (value as { start: string }).start;
+                }
+                onChange(newDate);
+              }}
               className="px-2 py-1 border border-gray-300 rounded text-xs"
             />
           </div>
@@ -113,10 +125,14 @@ const FilterComponent: React.FC<{
           <div className="flex gap-2">
             <input
               type="number"
-              value={value?.min || ""}
-              onChange={(e) =>
-                onChange({ ...value, min: Number(e.target.value) })
-              }
+              value={typeof value === 'object' && value !== null && 'min' in value ? (value as { min: number }).min : ''}
+              onChange={(e) => {
+                const newRange = { min: Number(e.target.value), max: 0 };
+                if (typeof value === 'object' && value !== null && 'max' in value) {
+                  newRange.max = (value as { max: number }).max;
+                }
+                onChange(newRange);
+              }}
               min={filter.min}
               max={filter.max}
               placeholder="Min"
@@ -125,10 +141,14 @@ const FilterComponent: React.FC<{
             <span className="text-xs text-gray-500 self-center">to</span>
             <input
               type="number"
-              value={value?.max || ""}
-              onChange={(e) =>
-                onChange({ ...value, max: Number(e.target.value) })
-              }
+              value={typeof value === 'object' && value !== null && 'max' in value ? (value as { max: number }).max : ''}
+              onChange={(e) => {
+                const newRange = { min: 0, max: Number(e.target.value) };
+                if (typeof value === 'object' && value !== null && 'min' in value) {
+                  newRange.min = (value as { min: number }).min;
+                }
+                onChange(newRange);
+              }}
               min={filter.min}
               max={filter.max}
               placeholder="Max"

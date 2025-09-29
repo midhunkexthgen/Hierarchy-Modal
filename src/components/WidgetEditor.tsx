@@ -108,7 +108,7 @@ const WidgetEditor: React.FC<{
               onChange={(e) =>
                 setEditWidget({
                   ...editWidget,
-                  viewType: e.target.value as any,
+                  viewType: e.target.value as DashboardWidget["viewType"],
                 })
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -280,7 +280,7 @@ const WidgetEditor: React.FC<{
                     onChange={(e) =>
                       setNewFilter({
                         ...newFilter,
-                        type: e.target.value as any,
+                        type: e.target.value as FilterConfig["type"],
                       })
                     }
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"

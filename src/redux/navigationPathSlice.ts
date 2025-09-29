@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 interface FiltersState {
   navigationPath: RootEntity[];
@@ -28,7 +28,7 @@ interface Modifier {
 }
 
 // Recursive entity type
-interface Entity {
+export interface Entity {
   code: string;
   name: string;
   icon: string;
@@ -37,4 +37,4 @@ interface Entity {
 }
 
 // Root object type
-interface RootEntity extends Entity {}
+type RootEntity = Entity;

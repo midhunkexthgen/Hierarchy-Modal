@@ -42,6 +42,14 @@ interface MatrixData {
   details: DetailItem[];
 }
 
+export interface inVisibleFiltersProps {
+  id: string;
+  type: string;
+  label: string;
+  field: string;
+  defaultValue: { start: string; end: string };
+}
+
 // Filter Types
 interface FilterOption {
   label: string;

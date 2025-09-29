@@ -1,11 +1,12 @@
-import React, { useEffect, useState, type JSX } from "react";
+import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Plus, Grid, Settings } from "lucide-react";
 import type {
   DashboardLayout,
   AppliedFilter,
   DashboardWidget,
-  ClickData,
+  // ClickData,
+  MatrixData,
 } from "./DashbiardExampleProps";
 import type { RootState } from "./redux/store";
 import { setLayoutForPath, setLayoutLoading } from "./redux/layoutSlice";
@@ -82,6 +83,7 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
             { label: "Germany", value: "Germany" },
             { label: "France", value: "France" },
             { label: "Spain", value: "Spain" },
+            { label: "Poland", value: "Poland" },
           ],
         },
         {
@@ -291,6 +293,7 @@ const DEFAULT_DASHBOARD: DashboardLayout = {
             { label: "Germany", value: "Germany" },
             { label: "France", value: "France" },
             { label: "Spain", value: "Spain" },
+            { label: "Poland", value: "Poland" },
           ],
         },
         {
@@ -489,9 +492,9 @@ const JsonDrivenDashboard: React.FC = () => {
   //   (state: RootState) => state.navigationPath?.navigationPath || []
   // );
   // const currentNavigationPath = buildPaths(navigationPath).join("\n") || "/";
-  const [dashboards, setDashboards] = useState<DashboardLayout[]>([
-    DEFAULT_DASHBOARD,
-  ]);
+  // const [dashboards, setDashboards] = useState<DashboardLayout[]>([
+  //   DEFAULT_DASHBOARD,
+  // ]);
 
   // const [savedStraggedLayout, setSavedStraggedLayout] = useState({});
   // const [key, setKey] = useState("");
@@ -635,7 +638,7 @@ const JsonDrivenDashboard: React.FC = () => {
     loadLayoutForPath();
   }, [currentNavigationPath, dispatch, isInitialized]);
 
-  const handleItemClick = (data: ClickData): void => {
+  const handleItemClick = (): void => {
     if (!isEditMode) {
       // Handle item click logic
     }
@@ -707,7 +710,9 @@ const JsonDrivenDashboard: React.FC = () => {
     }
   };
 
-  const onLayoutChange = async (layout: ReactGridLayout.Layout[]): void => {
+  const onLayoutChange = async (
+    layout: ReactGridLayout.Layout[]
+  ): Promise<void> => {
     let layoutData = layout;
     // Save layout to Redux store
     const savedLayout = await layoutStorage.getLayout(currentNavigationPath);
@@ -752,11 +757,7 @@ const JsonDrivenDashboard: React.FC = () => {
     });
   };
 
-  const handleHeightChange = (
-    widgetId: string,
-    height: number,
-    element: HTMLElement
-  ) => {
+  const handleHeightChange = (widgetId: string, height: number) => {
     const rowHeight = 100; // Match the rowHeight prop in ResponsiveGridLayout
     const marginY = 16; // Match the margin prop in ResponsiveGridLayout
 
@@ -837,10 +838,9 @@ const JsonDrivenDashboard: React.FC = () => {
           </div>
           <div className="flex items-center gap-4">
             <DashboardManager
-              dashboards={dashboards}
               currentDashboard={currentDashboard}
-              onDashboardChange={setCurrentDashboard}
-              onSaveDashboard={setCurrentDashboard}
+              // onDashboardChange={setCurrentDashboard}
+              // onSaveDashboard={setCurrentDashboard}
               onLoadDashboard={handleLoadDashboard}
               currentNavigationPath={currentNavigationPath}
               onClearLayout={() => {

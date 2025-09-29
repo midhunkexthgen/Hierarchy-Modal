@@ -1,5 +1,8 @@
+import type { Entity } from '../redux/navigationPathSlice';
+import type { ModifierValues } from '../types';
+
 // Utility functions for navigation path handling
-export const generateNavigationPathKey = (navigationPath: any[], modifierValues?: any): string => {
+export const generateNavigationPathKey = (navigationPath: Entity[], modifierValues?: ModifierValues): string => {
   if (!navigationPath || navigationPath.length === 0) {
     return 'default';
   }
@@ -13,7 +16,7 @@ export const generateNavigationPathKey = (navigationPath: any[], modifierValues?
   if (modifierValues && Object.keys(modifierValues).length > 0) {
     const modifierString = Object.entries(modifierValues)
       .map(([level, levelModifiers]) => {
-        const modifierPairs = Object.entries(levelModifiers as any)
+        const modifierPairs = Object.entries(levelModifiers as Record<string, unknown>)
           .map(([key, value]) => {
             if (value && typeof value === 'object' && 'startDate' in value && 'endDate' in value) {
               return `${key}:${value.startDate}-${value.endDate}`;
@@ -31,6 +34,6 @@ export const generateNavigationPathKey = (navigationPath: any[], modifierValues?
   return basePath;
 };
 
-export const isValidNavigationPath = (navigationPath: any[]): boolean => {
+export const isValidNavigationPath = (navigationPath: Entity[]): boolean => {
   return Array.isArray(navigationPath) && navigationPath.length > 0;
 }
