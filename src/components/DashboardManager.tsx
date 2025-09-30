@@ -1,5 +1,7 @@
-import { Download, Upload, RotateCcw } from "lucide-react";
+import { Download, Upload, RotateCcw, Bell } from "lucide-react";
 import { useState } from "react";
+import { useSelector } from "react-redux";
+import type { RootState } from "../redux/store";
 import type { DashboardLayout } from "../DashbiardExampleProps";
 
 const DashboardManager: React.FC<{
@@ -15,6 +17,7 @@ const DashboardManager: React.FC<{
 }) => {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [configText, setConfigText] = useState("");
+  const { unreadCount } = useSelector((state: RootState) => state.notifications);
 
   const exportConfig = () => {
     const config = JSON.stringify(currentDashboard, null, 2);
@@ -47,21 +50,6 @@ const DashboardManager: React.FC<{
   return (
     <>
       <div className="flex gap-2 ">
-        {/* <select
-          value={currentDashboard.id}
-          onChange={(e) => {
-            const dashboard = dashboards.find((d) => d.id === e.target.value);
-            if (dashboard) onDashboardChange(dashboard);
-          }}
-          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {dashboards.map((dashboard) => (
-            <option key={dashboard.id} value={dashboard.id}>
-              {dashboard.name}
-            </option>
-          ))}
-        </select> */}
-        {/* <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-sm"> */}
         <select className="bg-transparent text-sm font-medium text-gray-700 focus:outline-none bg-white border border-gray-200 rounded-lg p-2 ">
           <option>My Dashboard</option>
           <option>Analytics Dashboard</option>
@@ -101,6 +89,18 @@ const DashboardManager: React.FC<{
           title="Reset Layout for Current Path"
         >
           <RotateCcw className="w-4 h-4" />
+        </button>
+
+        <button
+          className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors flex items-center gap-1 relative"
+          title="Notifications"
+        >
+          <Bell className="w-4 h-4" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+              {unreadCount}
+            </span>
+          )}
         </button>
       </div>
 

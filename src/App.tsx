@@ -1,48 +1,62 @@
-// import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { addNotification } from "./redux/notificationsSlice";
 import JsonDrivenDashboard from "./DashboardExample";
 import NavigationBar from "./NavigationBar";
 
-// interface Notification {
-//   title: string;
-//   body: string;
-// }
-
 function App() {
-  // const [notifications, setNotifications] = useState<Notification[]>([]);
+  const dispatch = useDispatch();
 
-  // useEffect(() => {
-  //   const ws = new WebSocket("ws://localhost:8080");
+  useEffect(() => {
+    // Request notification permission
+    if ('Notification' in window) {
+      Notification.requestPermission();
+    }
 
-  //   ws.onopen = () => {
-  //     console.log("connected");
-  //   };
+    // WebSocket connection
+    const ws = new WebSocket('ws://localhost:8080');
 
-  //   ws.onmessage = (event) => {
-  //     const notification = JSON.parse(event.data);
-  //     setNotifications((prev) => [...prev, notification]);
-  //   };
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+    };
 
-  //   ws.onclose = () => {
-  //     console.log("disconnected");
-  //   };
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log('Message from server ', message);
 
-  //   return () => {
-  //     ws.close();
-  //   };
-  // }, []);
+        // Dispatch to Redux store
+        dispatch(addNotification(message));
+
+        // Send message to service worker
+        if (navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'SHOW_NOTIFICATION',
+            payload: message,
+          });
+        }
+      } catch (error) {
+        console.error(
+          'Error parsing WebSocket message or sending to service worker:',
+          error
+        );
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket disconnected');
+    };
+
+    // Clean up the connection when the component unmounts
+    return () => {
+      ws.close();
+    };
+  }, [dispatch]);
 
   return (
     <>
       <NavigationBar />
       <JsonDrivenDashboard />
-      {/* <div style={{ position: "fixed", top: "10px", right: "10px", zIndex: 9999 }}>
-        {notifications.map((notification, index) => (
-          <div key={index} style={{ background: "white", padding: "10px", margin: "10px", borderRadius: "5px", boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}>
-            <h3>{notification.title}</h3>
-            <p>{notification.body}</p>
-          </div>
-        ))}
-      </div> */}
     </>
   );
 }

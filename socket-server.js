@@ -1,26 +1,31 @@
-const WebSocket = require('ws');
+import { WebSocketServer } from "ws";
 
-const wss = new WebSocket.Server({ port: 8080 });
+const wss = new WebSocketServer({ port: 8080 });
 
-wss.on('connection', ws => {
-  console.log('Client connected');
+wss.on("connection", (ws) => {
+  console.log("Client connected");
 
-  ws.on('message', message => {
+  ws.on("message", (message) => {
     console.log(`Received message => ${message}`);
   });
 
-  ws.on('close', () => {
-    console.log('Client disconnected');
+  ws.on("close", () => {
+    console.log("Client disconnected");
   });
 
   // Send a notification every 10 seconds
   const interval = setInterval(() => {
-    ws.send(JSON.stringify({ title: 'New Notification', body: 'This is a push notification from the server.' }));
-  }, 10000);
+    ws.send(
+      JSON.stringify({
+        title: "New Notification",
+        body: "This is a push notification from the server.",
+      })
+    );
+  }, 100);
 
-  ws.on('close', () => {
+  ws.on("close", () => {
     clearInterval(interval);
   });
 });
 
-console.log('WebSocket server started on port 8080');
+console.log("WebSocket server started on port 8080");
