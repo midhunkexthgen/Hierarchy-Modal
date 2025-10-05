@@ -15,11 +15,51 @@ import DashboardManager from "./components/DashboardManager";
 import MatrixDisplay from "./components/MatrixDisplay";
 import WidgetEditor from "./components/WidgetEditor";
 import { Responsive, WidthProvider } from "react-grid-layout";
-
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
+import WidgetPanel from "./components/WidgetPanel";
+import { BarChart, PieChart, Table, DollarSign } from "lucide-react";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
+
+const predefinedWidgets = [
+  {
+    id: "revenue-widget",
+    title: "Total Revenue",
+    icon: <DollarSign className="w-8 h-8 text-green-500" />,
+    defaultLayout: { w: 3, h: 2, minW: 2, minH: 2 },
+    displayType: "summary",
+    viewType: "single-value",
+    apiEndpoint: "/api/summary",
+  },
+  {
+    id: "performance-chart-widget",
+    title: "Performance Chart",
+    icon: <BarChart className="w-8 h-8 text-blue-500" />,
+    defaultLayout: { w: 4, h: 4, minW: 3, minH: 3 },
+    displayType: "summary",
+    viewType: "chart",
+    apiEndpoint: "/api/performance",
+  },
+  {
+    id: "distribution-widget",
+    title: "Market Distribution",
+    icon: <PieChart className="w-8 h-8 text-purple-500" />,
+    defaultLayout: { w: 3, h: 4, minW: 3, minH: 3 },
+    displayType: "summary",
+    viewType: "pie-chart",
+    apiEndpoint: "/api/distribution",
+  },
+  {
+    id: "details-table-widget",
+    title: "Detailed Analytics",
+    icon: <Table className="w-8 h-8 text-indigo-500" />,
+    defaultLayout: { w: 12, h: 4, minW: 6, minH: 3 },
+    displayType: "details",
+    viewType: "tabular",
+    apiEndpoint: "/api/metrics",
+  },
+];
 
 const DEFAULT_DASHBOARD: DashboardLayout = {
   id: "default-dashboard",
@@ -488,16 +528,6 @@ const JsonDrivenDashboard: React.FC = () => {
     (state: RootState) => state.layout
   );
 
-  // const navigationPath = useSelector(
-  //   (state: RootState) => state.navigationPath?.navigationPath || []
-  // );
-  // const currentNavigationPath = buildPaths(navigationPath).join("\n") || "/";
-  // const [dashboards, setDashboards] = useState<DashboardLayout[]>([
-  //   DEFAULT_DASHBOARD,
-  // ]);
-
-  // const [savedStraggedLayout, setSavedStraggedLayout] = useState({});
-  // const [key, setKey] = useState("");
   const [currentDashboard, setCurrentDashboard] =
     useState<DashboardLayout>(DEFAULT_DASHBOARD);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -505,6 +535,7 @@ const JsonDrivenDashboard: React.FC = () => {
     null
   );
   const [isWidgetEditorOpen, setIsWidgetEditorOpen] = useState(false);
+  const [isWidgetPanelOpen, setIsWidgetPanelOpen] = useState(false);
   const [widgetFilters, setWidgetFilters] = useState<
     Record<string, AppliedFilter[]>
   >({});
@@ -666,13 +697,38 @@ const JsonDrivenDashboard: React.FC = () => {
   };
 
   const handleSaveWidget = (updatedWidget: DashboardWidget): void => {
-    const updatedDashboard = {
-      ...currentDashboard,
-      widgets: currentDashboard.widgets.map((w) =>
-        w.id === updatedWidget.id ? updatedWidget : w
-      ),
+    const existingWidget = currentDashboard.widgets.find(
+      (w) => w.id === updatedWidget.id
+    );
+
+    if (existingWidget) {
+      const updatedDashboard = {
+        ...currentDashboard,
+        widgets: currentDashboard.widgets.map((w) =>
+          w.id === updatedWidget.id ? updatedWidget : w
+        ),
+      };
+      setCurrentDashboard(updatedDashboard);
+    } else {
+      const updatedDashboard = {
+        ...currentDashboard,
+        widgets: [...currentDashboard.widgets, updatedWidget],
+      };
+      setCurrentDashboard(updatedDashboard);
+    }
+  };
+
+  const handleAddCustomWidget = () => {
+    const newWidget: DashboardWidget = {
+      id: `widget-${Date.now()}`,
+      title: "New Widget",
+      displayType: "summary",
+      viewType: "single-value",
+      position: { row: 0, col: 0, width: 3, height: 2 },
+      filters: [],
     };
-    setCurrentDashboard(updatedDashboard);
+    setEditingWidget(newWidget);
+    setIsWidgetEditorOpen(true);
   };
 
   const handleWidgetFiltersChange = (
@@ -682,22 +738,53 @@ const JsonDrivenDashboard: React.FC = () => {
     setWidgetFilters((prev) => ({ ...prev, [widgetId]: filters }));
   };
 
-  const addNewWidget = (): void => {
-    const newWidget: DashboardWidget = {
-      id: `widget-${Date.now()}`,
-      title: "New Widget",
-      displayType: "summary",
-      viewType: "single-value",
-      position: { row: 0, col: 0, width: 3, height: 2 },
-      additionalInfo: { outcome: true },
-      filters: [],
-    };
+  const onDrop = (
+    layout: ReactGridLayout.Layout[],
+    item: ReactGridLayout.Layout,
+    e: DragEvent
+  ) => {
+    const widgetId = e.dataTransfer?.getData("text/plain");
+    const predefinedWidget = predefinedWidgets.find((p) => p.id === widgetId);
 
-    const updatedDashboard = {
-      ...currentDashboard,
-      widgets: [...currentDashboard.widgets, newWidget],
-    };
-    setCurrentDashboard(updatedDashboard);
+    if (predefinedWidget) {
+      const newWidgetId = `widget-${Date.now()}`;
+      const newWidget: DashboardWidget = {
+        id: newWidgetId,
+        title: predefinedWidget.title,
+        displayType: predefinedWidget.displayType,
+        viewType: predefinedWidget.viewType,
+        apiEndpoint: predefinedWidget.apiEndpoint,
+        position: {
+          row: item.y,
+          col: item.x,
+          width: predefinedWidget.defaultLayout.w,
+          height: predefinedWidget.defaultLayout.h,
+        },
+        filters: [],
+      };
+
+      const updatedDashboard = {
+        ...currentDashboard,
+        widgets: [...currentDashboard.widgets, newWidget],
+      };
+      setCurrentDashboard(updatedDashboard);
+
+      const newLayoutItem = {
+        i: newWidgetId,
+        x: item.x,
+        y: item.y,
+        w: predefinedWidget.defaultLayout.w,
+        h: predefinedWidget.defaultLayout.h,
+      };
+
+      const newLayout = JSON.parse(JSON.stringify(layout));
+      newLayout.push(newLayoutItem);
+
+      dispatch(
+        setLayoutForPath({ path: currentNavigationPath, layout: newLayout })
+      );
+      layoutStorage.saveLayout(currentNavigationPath, newLayout);
+    }
   };
 
   const handleLoadDashboard = (configText: string): void => {
@@ -713,16 +800,8 @@ const JsonDrivenDashboard: React.FC = () => {
   const onLayoutChange = async (
     layout: ReactGridLayout.Layout[]
   ): Promise<void> => {
-    let layoutData = layout;
-    // Save layout to Redux store
-    const savedLayout = await layoutStorage.getLayout(currentNavigationPath);
-    if (!savedLayout) {
-      const aa = await layoutStorage.getLayout("default");
-      if (aa) {
-        layoutData = aa;
-      }
-      // return;
-    }
+    const layoutData = JSON.parse(JSON.stringify(layout));
+
     dispatch(
       setLayoutForPath({ path: currentNavigationPath, layout: layoutData })
     );
@@ -786,11 +865,12 @@ const JsonDrivenDashboard: React.FC = () => {
   const getCurrentLayout = (): ReactGridLayout.Layout[] => {
     const savedLayout = layouts[currentNavigationPath];
     if (savedLayout && savedLayout.length > 0) {
-      return savedLayout;
+      // Create a deep copy to avoid issues with frozen objects from Redux
+      return JSON.parse(JSON.stringify(savedLayout));
     }
 
     // Fallback to widget positions
-    return DEFAULT_DASHBOARD.widgets.map((w) => ({
+    return currentDashboard.widgets.map((w) => ({
       i: w.id,
       x: w.position.col,
       y: w.position.row,
@@ -814,125 +894,134 @@ const JsonDrivenDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <Grid className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {currentDashboard.description}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Navigation Path:{" "}
-                  {currentNavigationPath
-                    .replace("->", " → ")
-                    .replace("#", " | Filters: ")}
-                </p>
+    <div className="min-h-screen bg-gray-100 flex">
+      <div className="flex-1">
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <Grid className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Dashboard
+                  </h1>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {currentDashboard.description}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Navigation Path:{" "}
+                    {currentNavigationPath
+                      .replace("->", " → ")
+                      .replace("#", " | Filters: ")}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <DashboardManager
-              currentDashboard={currentDashboard}
-              // onDashboardChange={setCurrentDashboard}
-              // onSaveDashboard={setCurrentDashboard}
-              onLoadDashboard={handleLoadDashboard}
-              currentNavigationPath={currentNavigationPath}
-              onClearLayout={() => {
-                layoutStorage.deleteLayout(currentNavigationPath);
-                dispatch(
-                  setLayoutForPath({ path: currentNavigationPath, layout: [] })
-                );
-              }}
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={addNewWidget}
-                disabled={!isEditMode}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
-              >
-                <Plus className="w-4 h-4" />
-                Add Widget
-              </button>
-              <button
-                onClick={() => {
-                  setIsEditMode(!isEditMode);
+            <div className="flex items-center gap-4">
+              <DashboardManager
+                currentDashboard={currentDashboard}
+                onLoadDashboard={handleLoadDashboard}
+                currentNavigationPath={currentNavigationPath}
+                onClearLayout={() => {
+                  layoutStorage.deleteLayout(currentNavigationPath);
+                  dispatch(
+                    setLayoutForPath({
+                      path: currentNavigationPath,
+                      layout: [],
+                    })
+                  );
                 }}
-                className={`px-4 py-2 rounded-md transition-colors flex items-center gap-1 ${
-                  isEditMode
-                    ? "bg-red-600 text-white hover:bg-red-700"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
-              >
-                <Settings className="w-4 h-4" />
-                {isEditMode ? "Exit Edit" : "Edit Mode"}
-              </button>
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setIsWidgetPanelOpen(true)}
+                  // disabled={!isEditMode}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Widget
+                </button>
+                <button
+                  onClick={() => {
+                    setIsEditMode(!isEditMode);
+                  }}
+                  className={`px-4 py-2 rounded-md transition-colors flex items-center gap-1 ${
+                    isEditMode
+                      ? "bg-red-600 text-white hover:bg-red-700"
+                      : "bg-blue-600 text-white hover:bg-blue-700"
+                  }`}
+                >
+                  <Settings className="w-4 h-4" />
+                  {isEditMode ? "Exit Edit" : "Edit Mode"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="p-6">
-        <ResponsiveGridLayout
-          className="layout"
-          layouts={{ lg: layout }}
-          // layouts={layouts}
-          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-          rowHeight={100}
-          onLayoutChange={onLayoutChange}
-          isDraggable={isEditMode}
-          isResizable={isEditMode}
-          margin={[16, 16]}
-          // preventCollision={true}
-        >
-          {currentDashboard.widgets.map((widget) => (
-            <div
-              key={widget.id}
-              className="bg-white rounded-lg shadow-md border"
-              // style={{ height: `${widget?.customHeight}px !important` }}
-            >
-              <MatrixDisplay
-                widget={widget}
-                displayType={widget.displayType}
-                viewType={widget.viewType}
-                title={widget.title}
-                apiEndpoint={widget.apiEndpoint}
-                refreshInterval={widget.refreshInterval}
-                additionalInfo={widget.additionalInfo}
-                customStyles={widget.customStyles}
-                onItemClick={handleItemClick}
-                isDragging={false} // isDragging is no longer needed
-                onEdit={handleEditWidget}
-                onDelete={handleDeleteWidget}
-                isEditMode={isEditMode}
-                filters={widget.filters || []}
-                inVisibleFilters={widget.inVisibleFilters || []}
-                appliedFilters={widgetFilters[widget.id] || []}
-                onFiltersChange={(filters) =>
-                  handleWidgetFiltersChange(widget.id, filters)
-                }
-                onHeightChange={handleHeightChange}
-                sampleData={SAMPLE_DATA}
-              />
-            </div>
-          ))}
-        </ResponsiveGridLayout>
-      </div>
+        <div className="p-6">
+          <ResponsiveGridLayout
+            className="layout"
+            layouts={{ lg: layout }}
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+            cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+            rowHeight={100}
+            onLayoutChange={onLayoutChange}
+            isDraggable={isEditMode}
+            isResizable={isEditMode}
+            isDroppable={true}
+            onDrop={onDrop}
+            margin={[16, 16]}
+          >
+            {currentDashboard.widgets.map((widget) => (
+              <div
+                key={widget.id}
+                className="bg-white rounded-lg shadow-md border"
+              >
+                <MatrixDisplay
+                  widget={widget}
+                  displayType={widget.displayType}
+                  viewType={widget.viewType}
+                  title={widget.title}
+                  apiEndpoint={widget.apiEndpoint}
+                  refreshInterval={widget.refreshInterval}
+                  additionalInfo={widget.additionalInfo}
+                  customStyles={widget.customStyles}
+                  onItemClick={handleItemClick}
+                  isDragging={false}
+                  onEdit={handleEditWidget}
+                  onDelete={handleDeleteWidget}
+                  isEditMode={isEditMode}
+                  filters={widget.filters || []}
+                  inVisibleFilters={widget.inVisibleFilters || []}
+                  appliedFilters={widgetFilters[widget.id] || []}
+                  onFiltersChange={(filters) =>
+                    handleWidgetFiltersChange(widget.id, filters)
+                  }
+                  onHeightChange={handleHeightChange}
+                  sampleData={SAMPLE_DATA}
+                />
+              </div>
+            ))}
+          </ResponsiveGridLayout>
+        </div>
 
-      <WidgetEditor
-        widget={editingWidget}
-        isOpen={isWidgetEditorOpen}
-        onClose={() => {
-          setIsWidgetEditorOpen(false);
-          setEditingWidget(null);
-        }}
-        onSave={handleSaveWidget}
+        <WidgetEditor
+          widget={editingWidget}
+          isOpen={isWidgetEditorOpen}
+          onClose={() => {
+            setIsWidgetEditorOpen(false);
+            setEditingWidget(null);
+          }}
+          onSave={handleSaveWidget}
+        />
+      </div>
+      <WidgetPanel
+        isOpen={isWidgetPanelOpen}
+        onClose={() => setIsWidgetPanelOpen(false)}
+        onAddCustomWidget={handleAddCustomWidget}
       />
     </div>
   );
